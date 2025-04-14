@@ -23,7 +23,9 @@
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
 ## Description
+This project provides a robust user management system built with the NestJS framework. It includes features such as user registration, authentication, role-based access control, and user profile management. The system is designed to be scalable and secure, ensuring efficient handling of user data.
 
+Created and maintained by Samandari.
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
 ## Project setup
