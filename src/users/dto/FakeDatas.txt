@@ -1,0 +1,202 @@
+[
+    {
+        "role": "Admin",
+        "username": "admin_user1",
+        "email": "admin1@example.com",
+        "password": "AdminPass123"
+    },
+    {
+        "role": "Admin",
+        "username": "admin_user2",
+        "email": "admin2@example.com",
+        "password": "AdminPass456"
+    },
+    {
+        "role": "Admin",
+        "username": "admin_user3",
+        "email": "admin3@example.com",
+        "password": "AdminPass789"
+    },
+    {
+        "role": "Admin",
+        "username": "admin_user4",
+        "email": "admin4@example.com",
+        "password": "AdminPass101"
+    },
+    {
+        "role": "Admin",
+        "username": "admin_user5",
+        "email": "admin5@example.com",
+        "password": "AdminPass202"
+    },
+    {
+        "role": "Customer",
+        "username": "customer_user1",
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "customer1@example.com",
+        "password": "CustPass123",
+        "cardNumber": "4111111111111111",
+        "address": "123 Elm St, Springfield, USA",
+        "logo": "https://example.com/logo1.png"
+    },
+    {
+        "role": "Customer",
+        "username": "customer_user2",
+        "firstName": "Jane",
+        "lastName": "Smith",
+        "email": "customer2@example.com",
+        "password": "CustPass456",
+        "cardNumber": "4111111111112222",
+        "address": "456 Oak St, Springfield, USA",
+        "logo": "https://example.com/logo2.png"
+    },
+    {
+        "role": "Customer",
+        "username": "customer_user3",
+        "firstName": "Alice",
+        "lastName": "Johnson",
+        "email": "customer3@example.com",
+        "password": "CustPass789",
+        "cardNumber": "4111111111113333",
+        "address": "789 Pine St, Springfield, USA",
+        "logo": "https://example.com/logo3.png"
+    },
+    {
+        "role": "Customer",
+        "username": "customer_user4",
+        "firstName": "Bob",
+        "lastName": "Brown",
+        "email": "customer4@example.com",
+        "password": "CustPass101",
+        "cardNumber": "4111111111114444",
+        "address": "101 Maple St, Springfield, USA",
+        "logo": "https://example.com/logo4.png"
+    },
+    {
+        "role": "Customer",
+        "username": "customer_user5",
+        "firstName": "Charlie",
+        "lastName": "White",
+        "email": "customer5@example.com",
+        "password": "CustPass202",
+        "cardNumber": "4111111111115555",
+        "address": "202 Birch St, Springfield, USA",
+        "logo": "https://example.com/logo5.png"
+    },
+    {
+        "role": "Merchant",
+        "username": "merchant_user1",
+        "firstName": "David",
+        "lastName": "Green",
+        "email": "merchant1@example.com",
+        "password": "MerchPass123",
+        "phone": "123-456-7890",
+        "address": "123 Cedar St, Springfield, USA",
+        "logo": "https://example.com/logo6.png",
+        "status": "active"
+    },
+    {
+        "role": "Merchant",
+        "username": "merchant_user2",
+        "firstName": "Eve",
+        "lastName": "Black",
+        "email": "merchant2@example.com",
+        "password": "MerchPass456",
+        "phone": "234-567-8901",
+        "address": "456 Walnut St, Springfield, USA",
+        "logo": "https://example.com/logo7.png",
+        "status": "inactive"
+    },
+    {
+        "role": "Merchant",
+        "username": "merchant_user3",
+        "firstName": "Frank",
+        "lastName": "Blue",
+        "email": "merchant3@example.com",
+        "password": "MerchPass789",
+        "phone": "345-678-9012",
+        "address": "789 Chestnut St, Springfield, USA",
+        "logo": "https://example.com/logo8.png",
+        "status": "active"
+    },
+    {
+        "role": "Merchant",
+        "username": "merchant_user4",
+        "firstName": "Grace",
+        "lastName": "Yellow",
+        "email": "merchant4@example.com",
+        "password": "MerchPass101",
+        "phone": "456-789-0123",
+        "address": "101 Poplar St, Springfield, USA",
+        "logo": "https://example.com/logo9.png",
+        "status": "inactive"
+    },
+    {
+        "role": "Merchant",
+        "username": "merchant_user5",
+        "firstName": "Hank",
+        "lastName": "Red",
+        "email": "merchant5@example.com",
+        "password": "MerchPass202",
+        "phone": "567-890-1234",
+        "address": "202 Willow St, Springfield, USA",
+        "logo": "https://example.com/logo10.png",
+        "status": "active"
+    },
+    {
+        "role": "Commissionaire",
+        "username": "comm_user1",
+        "firstName": "Ivy",
+        "lastName": "Orange",
+        "email": "comm1@example.com",
+        "password": "CommPass123",
+        "phone": "678-901-2345",
+        "address": "123 Fir St, Springfield, USA",
+        "logo": "https://example.com/logo11.png"
+    },
+    {
+        "role": "Commissionaire",
+        "username": "comm_user2",
+        "firstName": "Jack",
+        "lastName": "Purple",
+        "email": "comm2@example.com",
+        "password": "CommPass456",
+        "phone": "789-012-3456",
+        "address": "456 Spruce St, Springfield, USA",
+        "logo": "https://example.com/logo12.png"
+    },
+    {
+        "role": "Commissionaire",
+        "username": "comm_user3",
+        "firstName": "Karen",
+        "lastName": "Pink",
+        "email": "comm3@example.com",
+        "password": "CommPass789",
+        "phone": "890-123-4567",
+        "address": "789 Redwood St, Springfield, USA",
+        "logo": "https://example.com/logo13.png"
+    },
+    {
+        "role": "Commissionaire",
+        "username": "comm_user4",
+        "firstName": "Leo",
+        "lastName": "Gray",
+        "email": "comm4@example.com",
+        "password": "CommPass101",
+        "phone": "901-234-5678",
+        "address": "101 Cypress St, Springfield, USA",
+        "logo": "https://example.com/logo14.png"
+    },
+    {
+        "role": "Commissionaire",
+        "username": "comm_user5",
+        "firstName": "Mia",
+        "lastName": "Brown",
+        "email": "comm5@example.com",
+        "password": "CommPass202",
+        "phone": "012-345-6789",
+        "address": "202 Ash St, Springfield, USA",
+        "logo": "https://example.com/logo15.png"
+    }
+]

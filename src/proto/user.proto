@@ -1,0 +1,96 @@
+// src/proto/user.proto
+syntax = "proto3";
+
+package user;
+
+service UserService {
+    rpc FindAll (Empty) returns (Users) {}
+    rpc Create (CreateUserRequest) returns (User) {}
+    rpc Update (UpdateUserRequest) returns (User) {}
+    rpc AssignRole (AssignRoleRequest) returns (User) {}
+    rpc DeAssignRole (DeAssignRoleRequest) returns (User) {}
+    rpc DeleteUser (UserByIdRequest) returns (Empty) {}
+    rpc FindAllByRole (FindByRoleRequest) returns (Users) {}
+    rpc FindById (UserByIdRequest) returns (User) {}
+    rpc FindByUsername (FindByUsernameRequest) returns (User) {}
+    rpc FindByEmail (FindByEmailRequest) returns (User) {}
+}
+
+message Empty {}
+
+message User {
+    string id = 1;
+    string keycloakId = 2;
+    string username = 3;
+    string email = 4;
+    string password = 5;
+    string firstName = 6;
+    string lastName = 7;
+    string phone = 8;
+    string address = 9;
+    string cardNumber = 10;
+    string logo = 11;
+    string status = 12;
+    string role = 13;
+}
+
+message Users {
+    repeated User users = 1;
+}
+
+message UserByIdRequest {
+    string id = 1;
+}
+
+message CreateUserRequest {
+    string keycloakId = 1;
+    string username = 2;
+    string email = 3;
+    string password = 4;
+    string firstName = 5;
+    string lastName = 6;
+    string phone = 7;
+    string address = 8;
+    string cardNumber = 9;
+    string logo = 10;
+    string status = 11;
+    string role = 12;
+}
+
+message UpdateUserRequest {
+    string id = 1;
+    string keycloakId = 2;
+    string username = 3;
+    string email = 4;
+    string password = 5;
+    string firstName = 6;
+    string lastName = 7;
+    string phone = 8;
+    string address = 9;
+    string cardNumber = 10;
+    string logo = 11;
+    string status = 12;
+    string role = 13;
+}
+
+message AssignRoleRequest {
+    string id = 1;
+    string role = 2;
+}
+
+message DeAssignRoleRequest {
+    string id = 1;
+    string role = 2;
+}
+
+message FindByRoleRequest {
+    string role = 1;
+}
+
+message FindByUsernameRequest {
+    string username = 1;
+}
+
+message FindByEmailRequest {
+    string email = 1;
+}
