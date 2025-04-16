@@ -4,47 +4,58 @@ import { ApiProperty } from '@nestjs/swagger';
 export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
+  @ApiProperty({ description: 'The username of the user', example: 'johndoe' })
   username: string;
 
   @IsEmail()
   @IsNotEmpty()
+  @ApiProperty({ description: 'The email address of the user', example: 'johndoe@example.com' })
   email: string;
 
   @IsString()
   @IsNotEmpty()
   @MinLength(5)
+  @ApiProperty({ description: 'The password of the user', example: 'P@ssw0rd' })
   password: string;
 
   @IsString()
   @IsOptional()
+  @ApiProperty({ description: 'The first name of the user', example: 'Optional' })
   firstName?: string;
 
   @IsString()
   @IsOptional()
+  @ApiProperty({ description: 'The last name of the user', example: 'Optional' })
   lastName?: string;
 
   @IsString()
   @IsOptional()
+  @ApiProperty({ description: 'The phone number of the user', example: 'Optional', required: false })
   phone?: string;
 
   @IsString()
   @IsOptional()
+  @ApiProperty({ description: 'The address of the user', example: 'Optional', required: false })
   address?: string;
 
   @IsString()
   @IsOptional()
+  @ApiProperty({ description: 'The card number associated with the user', example: 'Optional', required: false })
   cardNumber?: string;
 
   @IsString()
   @IsOptional()
+  @ApiProperty({ description: 'The logo or avatar of the user', example: 'Optional', required: false })
   logo?: string;
 
-  @IsEnum(['active', 'inactive'])
+  @IsString()
   @IsOptional()
+  @ApiProperty({ description: 'The status of the user', example: 'Optional', default: 'active', required: false })
   status?: 'active' | 'inactive' | 'pending';
 
   @IsString()
   @IsNotEmpty()
+  @ApiProperty({ description: 'The role of the user', example: 'Admin' })
   role: 'Admin' | 'Customer' | 'Merchant' | 'Commissionaire';
 }
 
@@ -138,4 +149,11 @@ export class CreateUserDatabaseDto {
   @IsNotEmpty()
   @ApiProperty({ description: 'The role of the user', example: 'admin' })
   role: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ description: 'The password of the user', example: 'Password123$' })
+  newPassword: string;
 }

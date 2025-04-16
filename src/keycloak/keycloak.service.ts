@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import KeycloakAdminClient from 'keycloak-admin';
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom, lastValueFrom } from "rxjs";
@@ -119,6 +119,33 @@ export class KeycloakService {
 
     const updatedUser = await this.findUserById(id);
     return updatedUser;
+  }
+
+  async resetPassword(id: string, newPassword: string): Promise<any> {
+    const token = await this.getAdminToken();
+    const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${id}/reset-password`;
+    const payload = {
+      type: 'password',
+      value: newPassword,
+      temporary: false, // Set to true if you want to force a password change on next login
+    };
+
+    try {
+      await firstValueFrom(
+        this.httpService.put(url, payload, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
+      // Optionally, fetch and return the updated user
+      const updatedUser = await this.findUserById(id);
+      return updatedUser;
+    } catch (error) {
+      console.error('Reset password error response:', error.response?.data);
+      throw new HttpException(`Failed to reset password: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
 

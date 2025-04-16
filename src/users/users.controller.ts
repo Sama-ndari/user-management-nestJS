@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Get, Request, Patch, Delete, Param, Put, HttpCode, HttpStatus } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDto, ResetPasswordDto } from './dto/create-user.dto';
 import { Roles } from 'nest-keycloak-connect';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -13,7 +13,6 @@ import { LogoutDto } from './dto/logout.dto';
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
-    private readonly keycloakService: KeycloakService,
   ) { }
 
   @Post('login')
@@ -35,6 +34,7 @@ export class UsersController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new user' })
+  @ApiBody({ type: CreateUserDto })
   @Roles({ roles: ['Admin'] }) // Only Admins can create users
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.createUser(createUserDto);
@@ -47,6 +47,18 @@ export class UsersController {
   @Roles({ roles: ['Admin'] }) // Only Admins can update users
   update(@Param('id') id: string, @Body() updateData: UpdateUserDto) {
     return this.usersService.updateUser(id, updateData);
+  }
+
+  @Post('reset-password/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'reset a user password' })
+  @ApiBody({ type: ResetPasswordDto})
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() body: ResetPasswordDto,
+  ): Promise<any> {
+    const updatedUser = await this.usersService.resetPassword(id, body.newPassword);
+    return { message: 'Password reset successfully', user: updatedUser };
   }
 
   @Put('/:id/assign-role/:role')
@@ -74,11 +86,11 @@ export class UsersController {
     return this.usersService.deleteUser(id);
   }
 
-  @Get('profile')
-  @Roles({ roles: ['Customer', 'Merchant', 'Commissionaire'] }) // Accessible to non-Admin roles
-  getProfile(@Request() req) {
-    return req.user; // Returns user info from the JWT token
-  }
+  // @Get('profile')
+  // @Roles({ roles: ['Customer', 'Merchant', 'Commissionaire'] }) // Accessible to non-Admin roles
+  // getProfile(@Request() req) {
+  //   return req.user; // Returns user info from the JWT token
+  // }
 
   @Get('users-by-role/:role')
   @ApiOperation({ summary: 'Find all users by role name' })

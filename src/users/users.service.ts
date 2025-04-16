@@ -35,6 +35,10 @@ export class UsersService {
     return updatedUser;
   }
 
+  async resetPassword(id: string, newPassword: string): Promise<any> {
+    return this.transactionsService.resetPassword(id, newPassword);
+  }
+  
   async findUserById(id: string): Promise<UserRepresentation> {
     return this.transactionsService.findUserById(id);
   }

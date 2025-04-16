@@ -185,6 +185,17 @@ export class TransactionsService {
         }
     }
 
+    async resetPassword(id: string, newPassword: string): Promise<any> {
+        // Fetch the user from the database to get the associated Keycloak ID
+        const dbUser = await this.databaseService.findUserById(id);
+        if (!dbUser || !dbUser.keycloakId) {
+            throw new HttpException('User not found or Keycloak ID missing', HttpStatus.NOT_FOUND);
+        }
+
+        const keycloakId = dbUser.keycloakId;
+        return this.keycloakService.resetPassword(keycloakId, newPassword);
+    }
+
     async findUserById(id: string): Promise<any> {
         let keycloakUser: any, dbUser: any;
 
