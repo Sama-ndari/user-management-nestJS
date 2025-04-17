@@ -22,7 +22,8 @@ export class TransactionsService {
                 throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
             }
 
-            const dbUser = await this.databaseService.findUserByUsername(userDto.username);
+            const dbUser = await this.databaseService.findUserByUsername(userDto.identifier) ||
+                await this.databaseService.findUserByEmail(userDto.identifier);
             if (!dbUser) {
                 // If the user doesn't exist in your DB, you might choose to create a new entry or throw an error.
                 throw new NotFoundException('User not found in database');
@@ -55,68 +56,65 @@ export class TransactionsService {
 
     async createUser(userDto: any): Promise<any> {
         let keycloakId;
-        // Start a Mongoose session
         const session = await this.connection.startSession();
         session.startTransaction();
 
         try {
-            // ---------------------- STEP 1: Keycloak Operation ----------------------
-            // Build the payload for Keycloak. Adjust the payload as required by your Keycloak API.
-            const keycloakUserPayload = Object.fromEntries(
-                Object.entries({
-                    username: userDto.username,
-                    email: userDto.email,
-                    firstName: userDto.firstName,
-                    lastName: userDto.lastName,
-                    credentials: userDto.password
-                        ? [{ type: 'password', value: userDto.password, temporary: false }]
-                        : undefined,
-                    enabled: true,
-                    emailVerified: false,
-                    attributes: {
-                        phone: userDto.phone,
-                        address: userDto.address,
-                        cardNumber: userDto.cardNumber,
-                        logo: userDto.logo,
-                        status: userDto.status || 'pending',
-                        role: userDto.role,
-                    },
-                }).filter(([_, value]) => value !== undefined && value !== null)
-            );
+            const keycloakUserPayload = {
+                username: userDto.username,
+                email: userDto.email,
+                firstName: userDto.firstName,
+                lastName: userDto.lastName,
+                credentials: userDto.password ? [{ type: 'password', value: userDto.password, temporary: false }] : undefined,
+                enabled: true,
+                emailVerified: false,
+                attributes: {
+                    phone: userDto.phone,
+                    address: userDto.address,
+                    cardNumber: userDto.cardNumber,
+                    logo: userDto.logo,
+                    status: userDto.status || 'pending',
+                    role: userDto.role,
+                },
+            };
 
-            // Create the user in Keycloak.
             const createdKeycloakUser = await this.keycloakService.createUser(keycloakUserPayload);
-            // If the Keycloak call fails, it should throw and the following lines won't execute.
-            console.log('Keycloak user created:', createdKeycloakUser);
-
             keycloakId = createdKeycloakUser.id;
 
             const userForDB = { ...userDto, keycloakId: createdKeycloakUser.id };
-
-            // Pass the Mongoose session into the database service to ensure transactionality.
             const createdUser = await this.databaseService.createUser(userForDB, session);
-            console.log('Database user created:', createdUser);
 
-            // Commit the transaction if both operations succeed.
             await session.commitTransaction();
             session.endSession();
-            return createdUser;
+
+            return {
+                message: 'User created successfully! Please check your email to verify your account.',
+                user: createdUser,
+                emailSent: createdKeycloakUser.emailVerified ? true : false, // Indicate email status
+            };
         } catch (error) {
-            // Roll back the database changes
             await session.abortTransaction();
             session.endSession();
 
-            // OPTIONAL: Compensate the Keycloak action by deleting the Keycloak user if it was created.
-            // (Make sure your KeycloakService.deleteUser method is idempotent and handles missing users gracefully.)
-            if (error && error.createdKeycloakUserId) {
+            if (keycloakId) {
                 try {
                     await this.keycloakService.deleteUser(keycloakId);
                 } catch (compensationError) {
-                    // Log the error from the compensation logic
                     console.error('Compensation error:', compensationError.message);
                 }
             }
-            throw new HttpException(error.message || 'Failed to create user transactionally', HttpStatus.INTERNAL_SERVER_ERROR);
+
+            // Handle email-specific errors gracefully
+            if (error.message.includes('Failed to send verification email')) {
+                console.warn('User created but email verification failed:', error.message);
+                return {
+                    message: 'User created successfully, but failed to send verification email. Please verify manually.',
+                    user: { username: userDto.username, email: userDto.email },
+                    emailSent: false,
+                };
+            }
+
+            throw new HttpException(error.message || 'Failed to create user', HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

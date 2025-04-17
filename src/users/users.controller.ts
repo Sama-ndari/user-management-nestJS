@@ -19,7 +19,7 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login a user' })
   @ApiBody({ type: LoginDto })
-  async login(@Body() body: { username: string; password: string }): Promise<any> {
+  async login(@Body() body: { identifier: string; password: string }): Promise<any> {
     const tokenData = await this.usersService.login(body);
     return { message: 'Login successful', tokenData };
   }
@@ -65,7 +65,7 @@ export class UsersController {
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiParam({ name: 'role', description: 'Role name' })
   @ApiOperation({ summary: 'assign a role' })
-  @Roles({ roles: ['Admin'] }) // Only Admins can assign roles
+  @Roles({ roles: ['Admin','Customer'] }) // Only Admins can assign roles
   async assignRole(@Param('id') userId: string, @Param('role') role: string) {
     await this.usersService.assignRole(userId, role);
   }

@@ -80,6 +80,7 @@
         "lastName": "White",
         "email": "customer5@example.com",
         "password": "CustPass202",
+        "phone": "123-456-7890",
         "cardNumber": "4111111111115555",
         "address": "202 Birch St, Springfield, USA",
         "logo": "https://example.com/logo5.png"
@@ -92,6 +93,7 @@
         "email": "merchant1@example.com",
         "password": "MerchPass123",
         "phone": "123-456-7890",
+        "cardNumber": "4111111111115555",
         "address": "123 Cedar St, Springfield, USA",
         "logo": "https://example.com/logo6.png",
         "status": "active"

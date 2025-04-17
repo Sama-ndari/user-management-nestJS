@@ -13,6 +13,15 @@ export class DatabaseService {
     ) { }
 
     async createUser(userDto: any, session?: ClientSession): Promise<any> {
+        // Check if username or email already exists
+        const existingUser = await this.UserModel.findOne({
+            $or: [{ username: userDto.username }, { email: userDto.email }]
+        }).exec();
+
+        if (existingUser) {
+            throw new Error('Username or email already exists');
+        }
+
         const newUser = Object.fromEntries(
             Object.entries({
                 username: userDto.username,
@@ -44,6 +53,7 @@ export class DatabaseService {
             if (!existingUser) {
                 throw new NotFoundException('User not found');
             }
+        
 
             const user = Object.fromEntries(
                 Object.entries({

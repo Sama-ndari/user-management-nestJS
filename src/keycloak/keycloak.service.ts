@@ -13,13 +13,15 @@ export class KeycloakService {
   }
 
   async login(userdto: LoginDto): Promise<any> {
+    const { identifier, password } = userdto;
+    const isEmail = identifier.includes('@');
     const url = `${process.env.KEYCLOAK_LOGIN_URL}`;
     const data = new URLSearchParams();
     data.append('grant_type', 'password');
     data.append('client_id', process.env.KEYCLOAK_CLIENT_ID || '');
     data.append('client_secret', process.env.KEYCLOAK_CLIENT_SECRET || '');
-    data.append('username', userdto.username);
-    data.append('password', userdto.password);
+    data.append('username', identifier); // Keycloak can use email as username if configured
+    data.append('password', password);
 
     try {
       const response = await lastValueFrom(
@@ -89,8 +91,37 @@ export class KeycloakService {
 
     const createdUser = await this.findUserByUsername(user.username);
     await this.assignRole(createdUser.id, user.attributes.role);
-    // await this.keycloakService.sendVerificationEmail(user, token);
+    await this.sendVerificationEmail(createdUser.id);
     return createdUser;
+  }
+
+  async sendVerificationEmail(userId: string): Promise<void> {
+    const token = await this.getAdminToken();
+    const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${userId}/execute-actions-email`;
+    const actions = ['VERIFY_EMAIL'];
+    const queryParams = new URLSearchParams({
+      client_id: process.env.KEYCLOAK_CLIENT_ID || 'nestjs-app',
+      redirect_uri: process.env.KEYCLOAK_ADMIN_REDIRECT_URL || 'http://google.com', // Adjust to your frontend login page
+      lifespan: '43200', // 12 hours in seconds
+    });
+
+    try {
+      await firstValueFrom(
+        this.httpService.put(`${url}?${queryParams.toString()}`, actions, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
+      console.log(`Verification email sent for user ${userId}`);
+    } catch (error) {
+      console.error('Send verification email error:', error.response?.data || error.message);
+      throw new HttpException(
+        `Failed to send verification email: ${error.response?.data?.errorMessage || error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   async updateUser(id: string, user: any): Promise<any> {
