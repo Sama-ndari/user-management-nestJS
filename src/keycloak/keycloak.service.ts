@@ -1,16 +1,19 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
-import KeycloakAdminClient from 'keycloak-admin';
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom, lastValueFrom } from "rxjs";
-import { RoleRepresentation, UserRepresentation } from 'src/users/dto/create-user.dto';
+import { CreateUserDatabaseDto, RoleRepresentation, UserRepresentation } from 'src/users/dto/create-user.dto';
 import { LoginDto } from 'src/users/dto/login.dto';
+import * as jwt from 'jsonwebtoken';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class KeycloakService {
 
-  constructor(
-    private readonly httpService: HttpService,) {
-  }
+
+
+  constructor(private readonly httpService: HttpService,
+    private databaseService: DatabaseService,
+  ) { }
 
   async login(userdto: LoginDto): Promise<any> {
     const { identifier, password } = userdto;
@@ -31,13 +34,78 @@ export class KeycloakService {
           },
         }),
       );
-      console.log({ message: 'Login successful', token: response.data.access_token, refreshToken: response.data.refresh_token });
-      return response.data; // Contains access_token, refresh_token, etc.
+
+      // Decode the access_token
+      const decoded = await this.decodeJwt(response.data.access_token);
+
+      // Log for debugging
+      console.log({
+        message: 'Login successful',
+        token: response.data.access_token,
+        refreshToken: response.data.refresh_token,
+        user: decoded,
+      });
+
+      // Return Keycloak response + decoded user data
+      return {
+        message: 'Login successful',
+        access_token: response.data.access_token,
+        refresh_token: response.data.refresh_token,
+        expires_in: response.data.expires_in,
+        token_type: response.data.token_type,
+        user: decoded,
+      };
     } catch (error) {
       if (error.response && error.response.status === 401) {
         throw new UnauthorizedException('Invalid credentials');
       }
       throw error; // Propagate other errors
+    }
+  }
+
+  private async decodeJwt(token: string): Promise<any> {
+    try {
+      // Decode the JWT without verification (assumes trusted Keycloak response)
+      const payload = jwt.decode(token, { complete: false }) as any;
+      if (!payload) {
+        throw new Error('Invalid JWT');
+      }
+
+      // Fetch user from DB
+      const dbUser: any = await this.databaseService.findUserByKeycloakId(payload.sub);
+
+      // Extract relevant fields from the decoded JWT
+      const jwtUser = Object.fromEntries(
+        Object.entries({
+          keycloakId: payload.sub || '',
+          username: payload.preferred_username || '',
+          email: payload.email || '',
+          name: payload.name || '',
+          roles: payload.realm_access?.roles || [],
+        }).filter(([_, value]) => value !== undefined && value !== null)
+      );
+
+      // Merge the fields from dbUser and jwtUser
+      const mergedUser = Object.fromEntries(
+        Object.entries({
+          id:dbUser._id,
+          username: jwtUser.username,
+          email: jwtUser.email,
+          keycloakId: jwtUser.keycloakId,
+          firstName: dbUser?.firstName || '',
+          lastName: dbUser?.lastName || '',
+          phone: dbUser?.phone || '',
+          address: dbUser?.address || '',
+          cardNumber: dbUser?.cardNumber || '',
+          logo: dbUser?.logo || '',
+          status: dbUser?.status || 'pending',
+          roles: jwtUser.roles,
+        }).filter(([_, value]) => value !== undefined && value !== null)
+      );
+
+      return mergedUser;
+    } catch (error) {
+      throw new UnauthorizedException('Failed to decode JWT');
     }
   }
 
@@ -191,7 +259,10 @@ export class KeycloakService {
           headers: { Authorization: `Bearer ${token}` },
         }),
       );
-      return response.data;
+      const user = response.data;
+
+      user.roles = await this.getUserRole(id, token);
+      return user;
     } catch (error) {
       throw new Error(`Failed to find user by id: ${error.message}`);
     }
@@ -209,7 +280,11 @@ export class KeycloakService {
           headers: { Authorization: `Bearer ${token}` },
         }),
       );
-      return response.data.length > 0 ? response.data[0] : null;
+      const user = response.data.length > 0 ? response.data[0] : null;
+      if (user) {
+        user.roles = await this.getUserRole(user.id, token);
+      }
+      return user;
     } catch (error) {
       throw new Error(`Failed to find user by username: ${error.message}`);
     }
@@ -226,7 +301,11 @@ export class KeycloakService {
           headers: { Authorization: `Bearer ${token}` },
         }),
       );
-      return response.data.length > 0 ? response.data[0] : null;
+      const user = response.data.length > 0 ? response.data[0] : null;
+      if (user) {
+        user.roles = await this.getUserRole(user.id, token);
+      }
+      return user;
     } catch (error) {
       throw new Error(`Failed to find user by email: ${error.message}`);
     }
@@ -243,7 +322,11 @@ export class KeycloakService {
           headers: { Authorization: `Bearer ${token}` },
         }),
       );
-      return response.data;
+      const users = response.data;
+      for (const user of users) {
+        user.roles = await this.getUserRole(user.id, token);
+      }
+      return users;
     } catch (error) {
       throw new Error(`Failed to find users by role: ${error.message}`);
     }
@@ -259,7 +342,11 @@ export class KeycloakService {
           },
         }),
       );
-      return response.data;
+      const users = response.data;
+      for (const user of users) {
+        user.roles = await this.getUserRole(user.id);
+      }
+      return users;
     } catch (error) {
       throw new Error(`Failed to find all users: ${error.message}`);
     }
@@ -347,6 +434,23 @@ export class KeycloakService {
     } catch (error) {
       throw new Error(`Failed to get admin token: ${error.message}`);
     }
+  }
+
+  async getUserRole(id: string, token?: string) {
+    if (!token) {
+      token = await this.getAdminToken();
+    }
+    // Fetch roles for the user
+    const rolesUrl = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${id}/role-mappings/realm`;
+    const rolesResponse = await firstValueFrom(
+      this.httpService.get(rolesUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    );
+    const roles = rolesResponse.data;
+    // roles.shift(); // Remove the first element
+    return roles;
+
   }
 
 }

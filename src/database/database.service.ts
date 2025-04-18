@@ -115,6 +115,21 @@ export class DatabaseService {
         }
     }
 
+    async findUserByKeycloakId(keycloakId: string): Promise<any> {
+        try {
+            const user = await CommonHelpers.retry(async () => {
+                const user = await this.UserModel.findOne({ keycloakId }).lean();
+                if (!user) {
+                    throw new NotFoundException('User not found');
+                }
+                return user;
+            });
+            return user;
+        } catch (error) {
+            throw new Error(`Error finding user by Keycloak ID: ${error.message}`);
+        }
+    }
+
     async findUserByUsername(username: string): Promise<any> {
         try {
             const user = await CommonHelpers.retry(async () => {
