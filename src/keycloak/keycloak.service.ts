@@ -88,7 +88,7 @@ export class KeycloakService {
       // Merge the fields from dbUser and jwtUser
       const mergedUser = Object.fromEntries(
         Object.entries({
-          id:dbUser._id,
+          id: dbUser._id,
           username: jwtUser.username,
           email: jwtUser.email,
           keycloakId: jwtUser.keycloakId,
@@ -246,6 +246,53 @@ export class KeycloakService {
       throw new HttpException(`Failed to reset password: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  async getConnectedUsers(): Promise<any[]> {
+    const token = await this.getAdminToken();
+
+    // 1. Lookup client UUID
+    const clientsRes = await firstValueFrom(
+      this.httpService.get(
+        `${process.env.KEYCLOAK_ADMIN_BASE_URL}/clients?clientId=${process.env.KEYCLOAK_CLIENT_ID}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+    );
+    const clients = clientsRes.data;
+    if (!clients.length) {
+      throw new Error(`Client "${process.env.KEYCLOAK_CLIENT_ID}" not found`);
+    }
+    const clientUuid = clients[0].id;
+
+    // 2. Fetch active user‑sessions for that client
+    const sessionsRes = await firstValueFrom(
+      this.httpService.get(
+        `${process.env.KEYCLOAK_ADMIN_BASE_URL}/clients/${clientUuid}/user-sessions`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+    );
+    const sessions = sessionsRes.data; // Array of UserSessionRepresentation
+    console.log('Sessions:', sessions);
+    // 3. Map each session to your DB user
+    const connectedUsers = await Promise.all(
+      sessions.map(async (s: any) => {
+        // Look up the user by their Keycloak sub (userId)
+        const dbUser = await this.databaseService.findUserByKeycloakId(s.userId);
+        const realmRoles = await this.getUserRole(s.userId, token);
+        return {
+          userId: s.userId,
+          id: dbUser._id,
+          username: dbUser.username,
+          email: dbUser.email,
+          roles: realmRoles.map(r => r.name) || [],   // or whatever roles come back
+          sessionStart: s.started || s.start,
+          lastAccess: s.lastAccess,
+        };
+      })
+    );
+
+    return connectedUsers;
+  }
+
 
 
   async findUserById(id: string, token?: string): Promise<any> {

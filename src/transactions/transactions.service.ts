@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { KeycloakService } from '../keycloak/keycloak.service';
 import { CreateUserDatabaseDto, CreateUserDto, UserRepresentation } from '../users/dto/create-user.dto';
-import { DatabaseService } from 'src/database/database.service';
+import { DatabaseService } from '../database/database.service';
 import { Connection } from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { LoginDto } from 'src/users/dto/login.dto';
@@ -250,6 +250,10 @@ export class TransactionsService {
         };
 
         return mergedUser;
+    }
+
+    async getConnectedUsers(): Promise<any[]> {
+        return this.keycloakService.getConnectedUsers();
     }
 
     async findAllUsersByRole(roleName: string): Promise<any[]> {

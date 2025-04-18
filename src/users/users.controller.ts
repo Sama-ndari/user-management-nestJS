@@ -4,11 +4,10 @@ import { CreateUserDto, ResetPasswordDto } from './dto/create-user.dto';
 import { Roles } from 'nest-keycloak-connect';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { KeycloakService } from 'src/keycloak/keycloak.service';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
 
-@ApiTags('user')
+@ApiTags('User Waangu Marketplace')
 @Controller('users')
 export class UsersController {
   constructor(
@@ -104,6 +103,13 @@ export class UsersController {
   @Roles({ roles: ['Admin'] })  // Only accessible by users with the admin role.
   findAll() {
     return this.usersService.findAllUsers();
+  }
+
+  @Get('connected')
+  @ApiOperation({ summary: 'Find all connected users' })
+  @Roles({ roles: ['Admin'] })  // Only accessible by users with the admin role.
+  findAllConnected() {
+    return this.usersService.getConnectedUsers();
   }
 
   @Get('by-id/:id')
