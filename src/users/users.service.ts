@@ -1,3 +1,4 @@
+//src/users/users.service.ts
 import { Delete, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { KeycloakService } from '../keycloak/keycloak.service';
 import { CreateUserDto, UserRepresentation } from './dto/create-user.dto';
@@ -17,6 +18,11 @@ export class UsersService {
 
   async login(userdto : LoginDto): Promise<any> {
     return this.transactionsService.login(userdto);
+  }
+
+  async decodeToken(token: string): Promise<any> {
+    const decodedData = await this.transactionsService.decodeToken(token);
+    return decodedData;
   }
 
   async logout(refreshToken: string): Promise<any> {

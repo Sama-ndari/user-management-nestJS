@@ -1,3 +1,4 @@
+//src/users/transactions/transactions.service.ts
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { KeycloakService } from '../keycloak/keycloak.service';
 import { CreateUserDatabaseDto, CreateUserDto, UserRepresentation } from '../users/dto/create-user.dto';
@@ -47,6 +48,15 @@ export class TransactionsService {
             };
         } catch (error) {
             throw new HttpException(error.message || 'Login failed', HttpStatus.UNAUTHORIZED);
+        }
+    }
+    
+    async decodeToken(token: string): Promise<any> {
+        try {
+            const decodedData = await this.keycloakService.decodeJwt(token);
+            return decodedData;
+        } catch (error) {
+            throw new HttpException(error.message || 'Failed to decode token', HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

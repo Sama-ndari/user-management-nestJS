@@ -1,3 +1,4 @@
+//src/users/keycloak/keycloak.service.ts
 import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom, lastValueFrom } from "rxjs";
@@ -36,14 +37,14 @@ export class KeycloakService {
       );
 
       // Decode the access_token
-      const decoded = await this.decodeJwt(response.data.access_token);
+      // const decoded = await this.decodeJwt(response.data.access_token);
 
       // Log for debugging
       console.log({
         message: 'Login successful',
         token: response.data.access_token,
         refreshToken: response.data.refresh_token,
-        user: decoded,
+        // user: decoded,
       });
 
       // Return Keycloak response + decoded user data
@@ -53,7 +54,7 @@ export class KeycloakService {
         refresh_token: response.data.refresh_token,
         expires_in: response.data.expires_in,
         token_type: response.data.token_type,
-        user: decoded,
+        // user: decoded,
       };
     } catch (error) {
       if (error.response && error.response.status === 401) {
@@ -63,7 +64,7 @@ export class KeycloakService {
     }
   }
 
-  private async decodeJwt(token: string): Promise<any> {
+  public async decodeJwt(token: string): Promise<any> {
     try {
       // Decode the JWT without verification (assumes trusted Keycloak response)
       const payload = jwt.decode(token, { complete: false }) as any;

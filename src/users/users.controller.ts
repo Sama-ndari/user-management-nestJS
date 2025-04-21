@@ -1,3 +1,4 @@
+//src/users/users.controller.ts
 import { Controller, Post, Body, Get, Request, Patch, Delete, Param, Put, HttpCode, HttpStatus } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto, ResetPasswordDto } from './dto/create-user.dto';
@@ -21,6 +22,21 @@ export class UsersController {
   async login(@Body() body: { identifier: string; password: string }): Promise<any> {
     const tokenData = await this.usersService.login(body);
     return { message: 'Login successful', tokenData };
+  }
+  
+  @Post('decode-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Decode an access token' })
+  @ApiBody({ 
+    schema: { 
+      properties: { 
+        accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' } 
+      } 
+    } 
+  })
+  async decodeToken(@Body() body: { accessToken: string }): Promise<any> {
+    const decodedData = await this.usersService.decodeToken(body.accessToken);
+    return { message: 'Token decoded successfully', decodedData };
   }
 
   @Post('logout')
