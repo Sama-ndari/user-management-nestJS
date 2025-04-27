@@ -201,13 +201,15 @@ export class KeycloakService {
     }
 
     const createdUser = await this.findUserByUsername(user.username);
-    await this.assignRole(createdUser.id, user.attributes.role);
-    await this.sendVerificationEmail(createdUser.id);
+    await this.assignRole(createdUser.id, user.attributes.role, token);
+    await this.sendVerificationEmail(createdUser.id, token);
     return createdUser;
   }
 
-  async sendVerificationEmail(userId: string): Promise<void> {
-    const token = await this.getAdminToken();
+  async sendVerificationEmail(userId: string, token?: string): Promise<void> {
+    if (!token) {
+      token = await this.getAdminToken();
+    }
     const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${userId}/execute-actions-email`;
     const actions = ['VERIFY_EMAIL'];
     const queryParams = new URLSearchParams({
@@ -548,9 +550,11 @@ export class KeycloakService {
     }
   }
 
-  async assignRole(userId: string, roleName: string) {
+  async assignRole(userId: string, roleName: string, token?: string) {
     console.log(`Function: assignRole, userId: ${userId}, roleName: ${roleName}`);
-    const token = await this.getAdminToken();
+    if (!token) {
+      token = await this.getAdminToken();
+    }
     const role = await this.getRoleByName(roleName, token);
     const roles = [role];
     console.log(`Function: assignRole, Roles: ${JSON.stringify(roles)}`);
@@ -563,8 +567,10 @@ export class KeycloakService {
     );
   }
 
-  async deAssignRole(userId: string, roleName: string) {
-    const token = await this.getAdminToken();
+  async deAssignRole(userId: string, roleName: string, token?: string) {
+    if (!token) {
+      token = await this.getAdminToken();
+    }
     const role = await this.getRoleByName(roleName, token);
     const roles = [role];
     await firstValueFrom(this.httpService.delete(`${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${userId}/role-mappings/realm`, {
