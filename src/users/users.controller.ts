@@ -1,5 +1,5 @@
 //src/users/users.controller.ts
-import { Controller, Post, Body, Get, Request, Patch, Delete, Param, Put, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Get, Request, Patch, Delete, Param, Put, HttpCode, HttpStatus, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto, ResetPasswordDto } from './dto/create-user.dto';
 import { Roles } from 'nest-keycloak-connect';
@@ -7,6 +7,7 @@ import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
+import { PageOptionsDto } from 'src/common/page-options-dto';
 
 @ApiTags('User Waangu Marketplace')
 @Controller('users')
@@ -76,6 +77,66 @@ export class UsersController {
     return { message: 'Password reset successfully', user: updatedUser };
   }
 
+  @Post('refresh-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access token' })
+  @ApiBody({ 
+    schema: { 
+      properties: { 
+        refresh: { type: 'string', example: 'refresh_token' } 
+      } 
+    } 
+  })
+  async refreshAccessToken(@Body() body: { refresh: string }): Promise<any> {
+    const newAccessToken = await this.usersService.refreshAccessToken(body.refresh);
+    return { access: newAccessToken };
+  }
+
+  @Post('roles')
+  @ApiOperation({ summary: 'Create a new role' })
+  @ApiBody({ 
+    schema: { 
+      properties: { 
+        roleName: { type: 'string', example: 'Admin' },
+        description: { type: 'string', example: 'Administrator role with full access' }
+      } 
+    } 
+  })
+  @Roles({ roles: ['Admin'] }) // Only Admins can create roles
+  async createRole(@Body() body: { roleName: string; description: string }): Promise<any> {
+    await this.usersService.createRole(body.roleName, body.description);
+    return { message: `Role '${body.roleName}' created successfully.` };
+  }
+
+  @Delete('roles/:roleName')
+  @ApiParam({ name: 'roleName', description: 'Role name to delete' })
+  @ApiOperation({ summary: 'Delete a role' })
+  @Roles({ roles: ['Admin'] }) // Only Admins can delete roles
+  async deleteRole(@Param('roleName') roleName: string): Promise<any> {
+    await this.usersService.deleteRole(roleName);
+    return { message: `Role '${roleName}' deleted successfully.` };
+  }
+
+  @Put('roles/:roleName')
+  @ApiParam({ name: 'roleName', description: 'Role name to update' })
+  @ApiBody({ 
+    schema: { 
+      properties: { 
+        newName: { type: 'string', example: 'UpdatedRoleName' },
+        newDescription: { type: 'string', example: 'Updated description for the role' }
+      } 
+    } 
+  })
+  @ApiOperation({ summary: 'Update a role name or description' })
+  @Roles({ roles: ['Admin'] }) // Only Admins can update roles
+  async updateRole(
+    @Param('roleName') roleName: string, 
+    @Body() body: { newName?: string; newDescription?: string }
+  ): Promise<any> {
+    await this.usersService.updateRole(roleName, body.newName, body.newDescription);
+    return { message: `Role '${roleName}' updated successfully.` };
+  }
+
   @Put('/:id/assign-role/:role')
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiParam({ name: 'role', description: 'Role name' })
@@ -117,8 +178,8 @@ export class UsersController {
   @Get()
   @ApiOperation({ summary: 'Find all users' })
   @Roles({ roles: ['Admin'] })  // Only accessible by users with the admin role.
-  findAll() {
-    return this.usersService.findAllUsers();
+  findAll(@Query() pageOptionsDto: PageOptionsDto) {
+    return this.usersService.findAllUsers(pageOptionsDto);
   }
 
   @Get('connected')

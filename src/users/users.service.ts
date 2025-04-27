@@ -7,6 +7,8 @@ import { TransactionsService } from '../transactions/transactions.service';
 import axios from 'axios';
 import * as dotenv from 'dotenv';
 import { LoginDto } from './dto/login.dto';
+import { PageDto } from 'src/common/page-dto';
+import { PageOptionsDto } from 'src/common/page-options-dto';
 dotenv.config();
 
 @Injectable()
@@ -23,6 +25,10 @@ export class UsersService {
   async decodeToken(token: string): Promise<any> {
     const decodedData = await this.transactionsService.decodeToken(token);
     return decodedData;
+  }
+
+  async refreshAccessToken(refreshToken: string): Promise<any> {
+    return this.transactionsService.refreshAccessToken(refreshToken);
   }
 
   async logout(refreshToken: string): Promise<any> {
@@ -60,8 +66,8 @@ export class UsersService {
     return this.transactionsService.findAllUsersByRole(roleName);
   }
 
-  async findAllUsers(): Promise<UserRepresentation[]> {
-    return this.transactionsService.findAllUsers();
+  async findAllUsers(pageOptionsDto?): Promise<PageDto<any>> {
+    return this.transactionsService.findAllUsers(pageOptionsDto);
   }
 
   async findUserByEmail(email: string): Promise<UserRepresentation> {
@@ -71,6 +77,18 @@ export class UsersService {
   async deleteUser(id: string) {
     const deletedUser = await this.transactionsService.deleteUser(id);
     return await { message: 'User deleted successfully', DeletedUser: deletedUser };
+  }
+
+  async createRole(roleName: string, description: string): Promise<any> {
+    return this.transactionsService.createRole(roleName, description);
+  }
+
+  async deleteRole(roleName: string): Promise<any> {
+    return this.transactionsService.deleteRole(roleName);
+  }
+
+  async updateRole(roleName: string, newName?: string, newDescription?: string): Promise<any> {
+    return this.transactionsService.updateRole(roleName, newName, newDescription);
   }
 
   async assignRole(userId: string, roleName: string) {

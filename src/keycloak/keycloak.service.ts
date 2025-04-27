@@ -60,14 +60,25 @@ export class KeycloakService {
       if (error.response && error.response.status === 401) {
         throw new UnauthorizedException('Invalid credentials');
       }
-      throw error; // Propagate other errors
+      throw new HttpException(`Login failed: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  // NEW: Fetch Keycloak public key for verification
+  private async getKeycloakPublicKey(): Promise<string> {
+    console.log('Fetching Keycloak public key...');
+    const url = `${process.env.KEYCLOAK_AUTH_SERVER_URL}/realms/Waangu-Marketplace/protocol/openid-connect/certs`;
+    const response = await firstValueFrom(this.httpService.get(url));
+    const cert = response.data.keys[0].x5c[0];
+    console.log('Keycloak public key:', cert);
+    return `-----BEGIN CERTIFICATE-----\n${cert}\n-----END CERTIFICATE-----`;
   }
 
   public async decodeJwt(token: string): Promise<any> {
     try {
-      // Decode the JWT without verification (assumes trusted Keycloak response)
-      const payload = jwt.decode(token, { complete: false }) as any;
+      // const payload = jwt.decode(token, { complete: false }) as any;
+      const publicKey = await this.getKeycloakPublicKey();
+      const payload = jwt.verify(token, publicKey, { algorithms: ['RS256'] }) as any; 
       if (!payload) {
         throw new Error('Invalid JWT');
       }
@@ -93,20 +104,51 @@ export class KeycloakService {
           username: jwtUser.username,
           email: jwtUser.email,
           keycloakId: jwtUser.keycloakId,
-          firstName: dbUser?.firstName || '',
-          lastName: dbUser?.lastName || '',
-          phone: dbUser?.phone || '',
-          address: dbUser?.address || '',
-          cardNumber: dbUser?.cardNumber || '',
-          logo: dbUser?.logo || '',
+          firstName: dbUser?.firstName,
+          lastName: dbUser?.lastName,
+          phone: dbUser?.phone,
+          address: dbUser?.address,
+          cardNumber: dbUser?.cardNumber,
+          logo: dbUser?.logo,
           status: dbUser?.status || 'pending',
           roles: jwtUser.roles,
-        }).filter(([_, value]) => value !== undefined && value !== null)
+        }).filter(([_, value]) => value !== undefined && value !== null && value !== '')
       );
 
       return mergedUser;
     } catch (error) {
       throw new UnauthorizedException('Failed to decode JWT');
+    }
+  }
+
+  async refreshAccessToken(refreshToken: string): Promise<{ access: string }> {
+    const url = `${process.env.KEYCLOAK_LOGIN_URL}`;
+    const data = new URLSearchParams();
+    data.append('grant_type', 'refresh_token');
+    data.append('client_id', process.env.KEYCLOAK_CLIENT_ID || '');
+    data.append('client_secret', process.env.KEYCLOAK_CLIENT_SECRET || '');
+    data.append('refresh_token', refreshToken);
+
+    try {
+      const response = await lastValueFrom(
+        this.httpService.post(url, data, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }),
+      );
+
+      return {
+        access: response.data.access_token,
+      };
+    } catch (error) {
+      if (error.response && error.response.status === 400) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+      throw new HttpException(
+        `Failed to refresh token: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -128,7 +170,7 @@ export class KeycloakService {
       );
       console.log('Logout successful');
     } catch (error) {
-      throw error; // Propagate errors for debugging
+      throw new HttpException(`Logout failed: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -155,7 +197,7 @@ export class KeycloakService {
           },
         }));
     } catch (error) {
-      throw new Error(`Failed to create user: ${error.message}`);
+      throw new HttpException(`Failed to create user: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     const createdUser = await this.findUserByUsername(user.username);
@@ -208,7 +250,7 @@ export class KeycloakService {
         }),
       );
     } catch (error) {
-      throw new Error(`Failed to update user: ${error.message}`);
+      throw new HttpException(`Failed to update user: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     // Only assign the role if it has been modified
@@ -260,7 +302,10 @@ export class KeycloakService {
     );
     const clients = clientsRes.data;
     if (!clients.length) {
-      throw new Error(`Client "${process.env.KEYCLOAK_CLIENT_ID}" not found`);
+      throw new HttpException(
+        `Client "${process.env.KEYCLOAK_CLIENT_ID}" not found`,
+        HttpStatus.NOT_FOUND,
+      );
     }
     const clientUuid = clients[0].id;
 
@@ -272,6 +317,10 @@ export class KeycloakService {
       )
     );
     const sessions = sessionsRes.data; // Array of UserSessionRepresentation
+    if (!sessions.length) { 
+      console.log('No active sessions found');
+      return [];
+    }
     console.log('Sessions:', sessions);
     // 3. Map each session to your DB user
     const connectedUsers = await Promise.all(
@@ -312,7 +361,7 @@ export class KeycloakService {
       user.roles = await this.getUserRole(id, token);
       return user;
     } catch (error) {
-      throw new Error(`Failed to find user by id: ${error.message}`);
+      throw new HttpException(`Failed to find user by id: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -334,7 +383,7 @@ export class KeycloakService {
       }
       return user;
     } catch (error) {
-      throw new Error(`Failed to find user by username: ${error.message}`);
+      throw new HttpException(`Failed to find user by username: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -355,7 +404,7 @@ export class KeycloakService {
       }
       return user;
     } catch (error) {
-      throw new Error(`Failed to find user by email: ${error.message}`);
+      throw new HttpException(`Failed to find user by email: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -371,32 +420,27 @@ export class KeycloakService {
         }),
       );
       const users = response.data;
-      for (const user of users) {
-        user.roles = await this.getUserRole(user.id, token);
-      }
+      const userRoles = await Promise.all(users.map(user => this.getUserRole(user.id, token)));
+      users.forEach((user, index) => { user.roles = userRoles[index]; });
       return users;
     } catch (error) {
-      throw new Error(`Failed to find users by role: ${error.message}`);
+      throw new HttpException(`Failed to find users by role: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   async findAllUsers(): Promise<UserRepresentation[]> {
     const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users`;
+    const token = await this.getAdminToken();
     try {
       const response = await firstValueFrom(
-        this.httpService.get(url, {
-          headers: {
-            Authorization: `Bearer ${await this.getAdminToken()}`,
-          },
-        }),
+        this.httpService.get(url, { headers: { Authorization: `Bearer ${token}` } }),
       );
       const users = response.data;
-      for (const user of users) {
-        user.roles = await this.getUserRole(user.id);
-      }
+      const userRoles = await Promise.all(users.map(user => this.getUserRole(user.id, token)));
+      users.forEach((user, index) => { user.roles = userRoles[index]; });
       return users;
     } catch (error) {
-      throw new Error(`Failed to find all users: ${error.message}`);
+      throw new HttpException(`Find all users failed: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -411,7 +455,78 @@ export class KeycloakService {
         }),
       );
     } catch (error) {
-      throw new Error(`Failed to delete user: ${error.message}`);
+      throw new HttpException(`Failed to delete user: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async createRole(roleName: string, description: string): Promise<void> {
+    const token = await this.getAdminToken();
+    const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/roles`;
+    const payload = {
+      name: roleName,
+      description: description,
+    };
+
+    try {
+      await firstValueFrom(
+      this.httpService.post(url, payload, {
+        headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        },
+      }),
+      );
+      console.log(`Role '${roleName}' created successfully.`);
+    } catch (error) {
+      throw new HttpException(`Failed to create role: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async deleteRole(roleName: string): Promise<void> {
+    const token = await this.getAdminToken();
+    const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/roles/${roleName}`;
+
+    try {
+      await firstValueFrom(
+        this.httpService.delete(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+      );
+      console.log(`Role '${roleName}' deleted successfully.`);
+    } catch (error) {
+      throw new HttpException(`Failed to delete role: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async updateRole(roleName: string, newName?: string, newDescription?: string): Promise<void> {
+    const token = await this.getAdminToken();
+    const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/roles/${roleName}`;
+    const payload: any = {};
+
+    // Update name if provided
+    if (newName) {
+      payload.name = newName;
+    }
+
+    // Update description if provided
+    if (newDescription) {
+      payload.description = newDescription;
+    }
+
+    try {
+      await firstValueFrom(
+        this.httpService.put(url, payload, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
+      console.log(`Role '${roleName}' updated successfully.`);
+    } catch (error) {
+      throw new HttpException(`Failed to update role: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -429,8 +544,7 @@ export class KeycloakService {
       console.log(`Function: getRoleByName, URL: ${url}, Response: ${response.data}`);
       return response.data;
     } catch (error) {
-      console.error(`Error in getRoleByName: ${error.message}`);
-      throw new Error(`Failed to fetch role by name: ${error.message}`);
+      throw new HttpException(`Role fetch failed: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -480,7 +594,7 @@ export class KeycloakService {
       const { access_token } = response.data;
       return access_token;
     } catch (error) {
-      throw new Error(`Failed to get admin token: ${error.message}`);
+      throw new HttpException(`Admin token fetch failed: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

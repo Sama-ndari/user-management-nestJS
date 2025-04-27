@@ -1,3 +1,4 @@
+//src/users/database/database.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { KeycloakService } from '../keycloak/keycloak.service';
 import { CreateUserDatabaseDto, CreateUserDto, UserRepresentation } from '../users/dto/create-user.dto';
@@ -5,6 +6,9 @@ import { User, UserDocument } from 'src/users/entities/user.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model } from 'mongoose';
 import { CommonHelpers } from 'src/common/helpers';
+import { PageOptionsDto } from 'src/common/page-options-dto';
+import { PageMetaDto } from 'src/common/page-meta-dto';
+import { PageDto } from 'src/common/page-dto';
 
 @Injectable()
 export class DatabaseService {
@@ -173,27 +177,28 @@ export class DatabaseService {
         }
     }
 
-    async findAllUsers(pageOptionsDto?: any): Promise<UserRepresentation[]> {
+    async findAllUsers(pageOptionsDto?: PageOptionsDto): Promise<PageDto<any>> {
         try {
             const users = await CommonHelpers.retry(async () => {
-                const users = await this.UserModel.find().lean().exec();
-                if (!users || users.length === 0) {
-                    throw new NotFoundException('No users found');
-                }
+                //     const users = await this.UserModel.find().lean().exec();
+                //     if (!users || users.length === 0) {
+                //         throw new NotFoundException('No users found');
+                //     }
+                //     return users;
+                // 
+                // const foundUsers = users.map(user => CommonHelpers.transformDocument(user));
+                const users = await this.UserModel.find()
+                .limit(pageOptionsDto?.take ?? 10) // Default to 10 if undefined
+                .skip(pageOptionsDto?.skip ?? 0)  // Default to 0 if undefined
+                .lean()
+                .exec();
                 return users;
             });
-            const foundUsers = users.map(user => CommonHelpers.transformDocument(user));
-            // const users = await this.UserModel.find()
-            // .limit(pageOptionsDto.take)
-            // .skip(pageOptionsDto.skip)
-            // .lean()
-            // .exec();
-
-            // const items = users.map(user => CommonHelpers.transformDocument(user));
-            // const itemCount = await this.UserModel.countDocuments({ [field]: value }).exec();
-            // const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
-            // return new PageDto(items, pageMetaDto);
-            return foundUsers;
+            const items = users.map(user => CommonHelpers.transformDocument(user));
+            const itemCount = await this.UserModel.countDocuments().exec();
+            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: pageOptionsDto ?? new PageOptionsDto() });
+            return new PageDto(items, pageMetaDto);
+            // return foundUsers;
         } catch (error) {
             throw new Error(`Error finding all users: ${error.message}`);
         }

@@ -7,6 +7,8 @@ import { Connection } from 'mongoose';
 import { InjectConnection } from '@nestjs/mongoose';
 import { LoginDto } from 'src/users/dto/login.dto';
 import { LogoutDto } from 'src/users/dto/logout.dto';
+import { PageDto } from 'src/common/page-dto';
+import { PageOptionsDto } from 'src/common/page-options-dto';
 
 @Injectable()
 export class TransactionsService {
@@ -44,7 +46,7 @@ export class TransactionsService {
             return {
                 accessToken: keycloakResponse.access_token,
                 refreshToken: keycloakResponse.refresh_token,
-                user: mergedUser,
+                // user: mergedUser,
             };
         } catch (error) {
             throw new HttpException(error.message || 'Login failed', HttpStatus.UNAUTHORIZED);
@@ -57,6 +59,15 @@ export class TransactionsService {
             return decodedData;
         } catch (error) {
             throw new HttpException(error.message || 'Failed to decode token', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    async refreshAccessToken(token: string): Promise<any> {
+        try {
+            const refreshedToken = await this.keycloakService.refreshAccessToken(token);
+            return refreshedToken;
+        } catch (error) {
+            throw new HttpException(error.message || 'Failed to refresh token', HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -300,12 +311,12 @@ export class TransactionsService {
         return keycloakUsers;
     }
 
-    async findAllUsers(): Promise<any[]> {
+    async findAllUsers(pageOptionsDto: PageOptionsDto): Promise<PageDto<CreateUserDatabaseDto>> {
         let keycloakUsers: any[] = [];
-        let dbUsers: any[] = [];
+        let dbUsers;
 
         try {
-            dbUsers = await this.databaseService.findAllUsers();
+            dbUsers = await this.databaseService.findAllUsers(pageOptionsDto);
         } catch (error) {
             console.error('Database fetch error:', error.message);
             throw new NotFoundException('Users not found in the database.');
@@ -318,19 +329,19 @@ export class TransactionsService {
             console.error('Keycloak fetch error:', error.message);
         }
 
-        console.log('Database users:', dbUsers);
+        console.log('Database users:', dbUsers.data);
         console.log('Keycloak users:', keycloakUsers);
-
         // Merge users from both sources, prioritizing Keycloak values if available
-        const mergedUsers: UserRepresentation[] = dbUsers.map(dbUser => {
+        const mergedUsers: CreateUserDatabaseDto[] = dbUsers.data.map(dbUser => {
             const keycloakUser = keycloakUsers.find(kcUser => kcUser.id === dbUser.keycloakId);
             return {
                 ...dbUser,
                 ...keycloakUser,
             };
         });
+        console.log('Merged users:', mergedUsers);
 
-        return mergedUsers;
+        return new PageDto(mergedUsers, dbUsers.meta);
     }
 
     async findUserByEmail(email: string): Promise<any> {
@@ -395,6 +406,33 @@ export class TransactionsService {
             // OPTIONAL: Compensate the Keycloak action by recreating the Keycloak user if necessary
             console.error('Error occurred during user deletion:', error.message);
             throw new HttpException(error.message || 'Failed to delete user transactionally', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    async createRole(roleName: string, description: string): Promise<any> {
+        try {
+            const createdRole = await this.keycloakService.createRole(roleName, description);
+            return createdRole;
+        } catch (error) {
+            throw new HttpException(error.message || 'Failed to create role', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    async deleteRole(roleName: string): Promise<any> {
+        try {
+            await this.keycloakService.deleteRole(roleName);
+            return { message: `Role ${roleName} deleted successfully` };
+        } catch (error) {
+            throw new HttpException(error.message || 'Failed to delete role', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    async updateRole(roleName: string, newName?: string, newDescription?: string): Promise<any> {
+        try {
+            const updatedRole = await this.keycloakService.updateRole(roleName, newName, newDescription);
+            return updatedRole;
+        } catch (error) {
+            throw new HttpException(error.message || 'Failed to update role', HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
