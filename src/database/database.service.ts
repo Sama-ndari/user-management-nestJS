@@ -6,9 +6,9 @@ import { User, UserDocument } from 'src/users/entities/user.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model } from 'mongoose';
 import { CommonHelpers } from 'src/common/helpers';
-import { PageOptionsDto } from 'src/common/page-options-dto';
-import { PageMetaDto } from 'src/common/page-meta-dto';
-import { PageDto } from 'src/common/page-dto';
+import { PageOptionsDto } from 'src/common/page-options-dto/page-options-dto';
+import { PageMetaDto } from 'src/common/page-meta-dto/page-meta-dto';
+import { PageDto } from 'src/common/page-dto/page-dto';
 
 @Injectable()
 export class DatabaseService {
@@ -30,7 +30,6 @@ export class DatabaseService {
             Object.entries({
                 username: userDto.username,
                 email: userDto.email,
-                // password: userDto.password,
                 keycloakId: userDto.keycloakId,
                 firstName: userDto.firstName,
                 lastName: userDto.lastName,
@@ -39,14 +38,13 @@ export class DatabaseService {
                 cardNumber: userDto.cardNumber,
                 logo: userDto.logo,
                 status: userDto.status || 'pending',
-                // role: userDto.role,
+                
             }).filter(([_, value]) => value !== undefined && value !== null)
         );
+        console.log('newUser', newUser);
 
         return CommonHelpers.retry(async () => {
             const createdUser = await this.UserModel.create([newUser], { session });
-            // await this.invalidatePartnersCache();
-            // console.log('Cache invalidated after create');
             return createdUser;
         });
     }
@@ -63,7 +61,6 @@ export class DatabaseService {
                 Object.entries({
                     username: userDto.username,
                     email: userDto.email,
-                    // password: userDto.password,
                     keycloakId: userDto.keycloakId,
                     firstName: userDto.firstName,
                     lastName: userDto.lastName,
@@ -72,7 +69,6 @@ export class DatabaseService {
                     cardNumber: userDto.cardNumber,
                     logo: userDto.logo,
                     status: userDto.status || 'pending',
-                    // role: userDto.role,
                 }).filter(([_, value]) => value !== undefined && value !== null)
             );
 
@@ -81,25 +77,6 @@ export class DatabaseService {
             return updatedUser;
         });
     }
-
-    async updateUserRole2(id: string, roleName: string, addRole: boolean, session?: ClientSession): Promise<any> {
-        return CommonHelpers.retry(async () => {
-            const user = await this.UserModel.findById(id).exec();
-            if (!user) {
-                throw new NotFoundException('User not found');
-            }
-            let updatedUser;
-
-            if (addRole) {
-                const newUser = { role: roleName };
-                updatedUser = await this.UserModel.findByIdAndUpdate(id, newUser, { new: true, session }).lean();
-            } else {
-                updatedUser = await this.UserModel.findByIdAndUpdate(id, { role: null }, { new: true, session }).lean();
-            }
-            return CommonHelpers.transformDocument(updatedUser);
-        });
-    }
-
 
     async findUserById(id: string): Promise<any> {
         try {
@@ -110,9 +87,6 @@ export class DatabaseService {
                 }
                 return user;
             });
-            if (!user) {
-                throw new NotFoundException('User not found');
-            }
             return user;
         } catch (error) {
             throw new Error(`Error finding user by ID: ${error.message}`);
@@ -149,34 +123,6 @@ export class DatabaseService {
         }
     }
 
-    async findAllUsersByRole2(roleName: string, pageOptionsDto?: any): Promise<any[]> {
-        try {
-            const foundUsers = await CommonHelpers.retry(async () => {
-                const users = await this.UserModel.find({ 'role': roleName })
-                    .lean()
-                    .exec();
-                if (!users || users.length === 0) {
-                    throw new NotFoundException('No users found for the specified role');
-                }
-                return users.map(user => CommonHelpers.transformDocument(user));
-            });
-
-            // const users = await this.UserModel.find({ 'role': roleName })
-            // .limit(pageOptionsDto.take)
-            // .skip(pageOptionsDto.skip)
-            // .lean()
-            // .exec();
-
-            // const items = users.map(user => CommonHelpers.transformDocument(user));
-            // const itemCount = await this.UserModel.countDocuments({ [field]: value }).exec();
-            // const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
-            // return new PageDto(items, pageMetaDto);
-            return foundUsers;
-        } catch (error) {
-            throw new Error(`Error finding users by role: ${error.message}`);
-        }
-    }
-
     async findAllUsers(pageOptionsDto?: PageOptionsDto): Promise<PageDto<any>> {
         try {
             const users = await CommonHelpers.retry(async () => {
@@ -188,15 +134,15 @@ export class DatabaseService {
                 // 
                 // const foundUsers = users.map(user => CommonHelpers.transformDocument(user));
                 const users = await this.UserModel.find()
-                .limit(pageOptionsDto?.take ?? 10) // Default to 10 if undefined
-                .skip(pageOptionsDto?.skip ?? 0)  // Default to 0 if undefined
+                .limit(pageOptionsDto?.take || 10) // Default to 10 if undefined
+                .skip(pageOptionsDto?.skip || 0)  // Default to 0 if undefined
                 .lean()
                 .exec();
                 return users;
             });
             const items = users.map(user => CommonHelpers.transformDocument(user));
             const itemCount = await this.UserModel.countDocuments().exec();
-            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: pageOptionsDto ?? new PageOptionsDto() });
+            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: pageOptionsDto || new PageOptionsDto() });
             return new PageDto(items, pageMetaDto);
             // return foundUsers;
         } catch (error) {

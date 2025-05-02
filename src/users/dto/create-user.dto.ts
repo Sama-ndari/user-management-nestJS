@@ -1,3 +1,4 @@
+//src/users/dto/create-user.dto.ts
 import { IsString, IsEmail, IsNotEmpty, IsEnum, IsOptional, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -53,12 +54,9 @@ export class CreateUserDto {
   @ApiProperty({ description: 'The status of the user', example: 'Optional', default: 'active', required: false })
   status?: 'active' | 'inactive' | 'pending';
 
-  @IsString()
-  @IsNotEmpty()
-  @ApiProperty({ description: 'The role of the user', example: 'Admin' })
-  role: 'Admin' | 'Customer' | 'Merchant' | 'Commissionaire';
+  @ApiProperty({ description: 'The Group of the user', example: 'Admin' })
+  group?: 'Admin' | 'Customer' | 'Merchant' | 'Commissionaire';
 }
-
 export class UserRepresentation {
   username: string;
   email: string;
@@ -73,7 +71,7 @@ export class UserRepresentation {
     cardNumber?: string;
     logo?: string;
     status?: 'active' | 'inactive' | 'pending';
-    role: 'Admin' | 'Customer' | 'Merchant' | 'Commissionaire';
+    group?: 'Admin' | 'Customer' | 'Merchant' | 'Commissionaire';
   };
 }
 export class Credential {
@@ -145,10 +143,16 @@ export class CreateUserDatabaseDto {
   @ApiProperty({ description: 'The status of the user', example: 'active', default: 'active', required: false })
   status?: 'active' | 'inactive' | 'pending';
 
+}
+
+export class LoginUserDto{
   @IsString()
   @IsNotEmpty()
-  @ApiProperty({ description: 'The role of the user', example: 'admin' })
-  role: string;
+  username: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password: string;
 }
 
 export class ResetPasswordDto {

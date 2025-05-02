@@ -7,12 +7,25 @@ import { DatabaseService } from 'src/database/database.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from './entities/user.entity';
 import { TransactionsService } from 'src/transactions/transactions.service';
+import { ClientService } from 'src/keycloak/managements/clientManagement.service';
+import { ClientRoleService } from 'src/keycloak/managements/clientRoleManagement.service';
+import { GroupService } from 'src/keycloak/managements/groupManagement.service';
+import { RealmRoleService } from 'src/keycloak/managements/realmRoleManagement.service';
+import { UserKeycloakService } from 'src/keycloak/managements/userManagement.service';
+import { JwtStrategy } from 'src/keycloak/security/jwtStrategy.service';
+import { LoggerService } from 'src/keycloak/security/logger.service';
+import { Log, LogSchema } from './entities/log.entity';
 
 @Module({
   imports: [HttpModule,
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([{ name: Log.name, schema: LogSchema }]),
   ],
-  providers: [UsersService, KeycloakService, DatabaseService, TransactionsService],
+  providers: [
+    UsersService, KeycloakService, DatabaseService, TransactionsService,
+    LoggerService, JwtStrategy, ClientRoleService, RealmRoleService,
+    UserKeycloakService, GroupService,ClientService,
+  ],
   controllers: [UsersController],
   exports: [UsersService],
 })

@@ -1,3 +1,4 @@
+//src/users/entities/user.entity.ts
 import { ApiProperty } from '@nestjs/swagger';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';

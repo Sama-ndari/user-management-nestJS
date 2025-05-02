@@ -1,10 +1,12 @@
+//src/helpers/helpers.ts
 import { HttpException, HttpStatus } from '@nestjs/common';
 // import { createClient, RedisClientType } from '@redis/client';
 
+
 export class CommonHelpers {
     static readonly MAX_RETRIES = 3;
-    // static readonly DEFAULT_TTL = 300;
-    // private static redisClient: RedisClientType;
+    static readonly DEFAULT_TTL = 300; // 5 minutes
+    // public static redisClient: RedisClientType;
 
     // static initializeRedisClient(): RedisClientType {
     //     if (!this.redisClient) {
@@ -49,7 +51,12 @@ export class CommonHelpers {
         throw new HttpException('Unexpected error in retry logic', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    // static async cacheOrFetch<T>(cacheKey: string, fetchFn: () => Promise<T>, ttl: number = this.DEFAULT_TTL): Promise<T> {
+    // static async cacheOrFetch<T>(
+    //     cacheKey: string, 
+    //     fetchFn: () => Promise<T>, 
+    //     ttl: number = this.DEFAULT_TTL, 
+    //     setName?: string
+    // ): Promise<T> {
     //     try {
     //         const cachedData = await this.redisClient.get(cacheKey);
     //         console.log(`Cache lookup for ${cacheKey}:`, cachedData ? 'Hit' : 'Miss');
@@ -59,6 +66,12 @@ export class CommonHelpers {
     //         const data = await this.retry(fetchFn);
     //         console.log(`Setting cache for ${cacheKey} with TTL: ${ttl}s`);
     //         await this.redisClient.set(cacheKey, JSON.stringify(data), { EX: ttl });
+
+    //         if (setName) {
+    //             await this.redisClient.sAdd(setName, cacheKey);
+    //             console.log(`Added ${cacheKey} to set: ${setName}`);
+    //         }
+
     //         return data;
     //     } catch (error) {
     //         console.error(`Cache error for ${cacheKey}: ${error.message}`);

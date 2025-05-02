@@ -24,13 +24,13 @@ export class UsersGrpcController {
     @GrpcMethod('UserService', 'AssignRole')
     async assignRole(data: { id: string; role: string }) {
         const { id, role } = data;
-        return this.usersService.assignRole(id, role);
+        return this.usersService.assignRealmRole(id, role);
     }
 
     @GrpcMethod('UserService', 'DeAssignRole')
     async deAssignRole(data: { id: string; role: string }) {
         const { id, role } = data;
-        return this.usersService.deAssignRole(id, role);
+        return this.usersService.deAssignRealmRole(id, role);
     }
 
     @GrpcMethod('UserService', 'DeleteUser')
@@ -40,7 +40,7 @@ export class UsersGrpcController {
 
     @GrpcMethod('UserService', 'FindAllByRole')
     async findByRole(role: string) {
-        return this.usersService.findAllUsersByRole(role);
+        return this.usersService.findAllUsersByRealmRole(role);
     }
 
     @GrpcMethod('UserService', 'FindAll')

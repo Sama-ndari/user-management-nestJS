@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsArray, IsNumber, IsString } from "class-validator";
-import { PageMetaDto } from "./page-meta-dto";
+import { PageMetaDto } from "../page-meta-dto/page-meta-dto";
 
 export class PageDto<T> {
     @IsNumber()
