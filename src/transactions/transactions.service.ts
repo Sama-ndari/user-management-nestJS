@@ -30,7 +30,7 @@ export class TransactionsService {
 
 
     async getAuditLogs(filters: { date?: string; actor?: string; action?: string; startTime?: string; endTime?: string; }): Promise<any> {
-        const logs = await this.keycloakService.getAuditLogs({ date: filters.date || undefined, actor: filters.actor || undefined, action: filters.action || undefined, startTime: filters.startTime || undefined, endTime: filters.endTime || undefined });
+        const logs = await this.keycloakService.getAuditLogsDB({ date: filters.date || undefined, actor: filters.actor || undefined, action: filters.action || undefined, startTime: filters.startTime || undefined, endTime: filters.endTime || undefined });
         return logs;
     }
 

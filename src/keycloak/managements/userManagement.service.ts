@@ -7,12 +7,14 @@ import { UserRepresentation } from '../../users/dto/create-user.dto';
 import { LoginDto } from '../../users/dto/login.dto';
 import { DatabaseService } from '../../database/database.service';
 import * as jwt from 'jsonwebtoken';
+import { EmailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class UserKeycloakService {
   constructor(private readonly httpService: HttpService,
     @Inject(forwardRef(() => KeycloakService)) private readonly keycloakService: KeycloakService,
     private readonly databaseService: DatabaseService,
+    private readonly emailService: EmailService,
 
   ) { }
 
@@ -199,7 +201,10 @@ export class UserKeycloakService {
     const createdUser = await this.findUserByUsername(user.username);
     const groupId = await this.keycloakService.getGroupIdByName(user.attributes.group);
     await this.keycloakService.addUserToGroup(createdUser.id, groupId, token);
-    await this.sendVerificationEmail(createdUser.id, token);
+    console.log('Created user:', user);
+    // Extract the password value from the created user object
+    const tempPassword = user.credentials?.find(cred => cred.type === 'password')?.value;
+    await this.sendVerificationEmail(createdUser.email, createdUser.username, tempPassword);
     return createdUser;
   }
 
@@ -230,39 +235,42 @@ export class UserKeycloakService {
     }
 
     const createdUser = await this.findUserByUsername(user.username);
-    await this.sendVerificationEmail(createdUser.id, token);
+    // Extract the password value from the created user object
+    const tempPassword = user.credentials?.find(cred => cred.type === 'password')?.value;
+    await this.sendVerificationEmail(createdUser.email, createdUser.username, tempPassword);
     return createdUser;
   }
 
-  async sendVerificationEmail(userId: string, token?: string): Promise<void> {
-    if (!token) {
-      token = await this.getAdminToken();
-    }
-    const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${userId}/execute-actions-email`;
-    const actions = ['VERIFY_EMAIL'];
-    const queryParams = new URLSearchParams({
-      client_id: process.env.KEYCLOAK_CLIENT_ID || 'nestjs-app',
-      redirect_uri: process.env.KEYCLOAK_ADMIN_REDIRECT_URL || 'http://google.com', // Adjust to your frontend login page
-      lifespan: '43200', // 12 hours in seconds
-    });
+  async sendVerificationEmail(userEmail: string, username: string, tempPassword: string): Promise<void> {
+    await this.emailService.sendLoginCredentials(userEmail, username, tempPassword);
+    // if (!token) {
+    //   token = await this.getAdminToken();
+    // }
+    // const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${userId}/execute-actions-email`;
+    // const actions = ['VERIFY_EMAIL'];
+    // const queryParams = new URLSearchParams({
+    //   client_id: process.env.KEYCLOAK_CLIENT_ID || 'nestjs-app',
+    //   redirect_uri: process.env.KEYCLOAK_ADMIN_REDIRECT_URL || 'http://google.com', // Adjust to your frontend login page
+    //   lifespan: '43200', // 12 hours in seconds
+    // });
 
-    try {
-      await firstValueFrom(
-        this.httpService.put(`${url}?${queryParams.toString()}`, actions, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        }),
-      );
-      console.log(`Verification email sent for user ${userId}`);
-    } catch (error) {
-      console.error('Send verification email error:', error.response?.data || error.message);
-      throw new HttpException(
-        `Failed to send verification email: ${error.response?.data?.errorMessage || error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    // try {
+    //   await firstValueFrom(
+    //     this.httpService.put(`${url}?${queryParams.toString()}`, actions, {
+    //       headers: {
+    //         Authorization: `Bearer ${token}`,
+    //         'Content-Type': 'application/json',
+    //       },
+    //     }),
+    //   );
+    //   console.log(`Verification email sent for user ${userId}`);
+    // } catch (error) {
+    //   console.error('Send verification email error:', error.response?.data || error.message);
+    //   throw new HttpException(
+    //     `Failed to send verification email: ${error.response?.data?.errorMessage || error.message}`,
+    //     HttpStatus.INTERNAL_SERVER_ERROR,
+    //   );
+    // }
   }
 
   async updateUser(id: string, user: any): Promise<any> {

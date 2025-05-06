@@ -11,6 +11,7 @@ import { CreateGroupDto, UpdateGrouprDto } from './dto/create-group.dto';
 import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 
+
 @ApiTags('User Waangu Marketplace')
 @Controller('users')
 export class UsersController {
@@ -29,8 +30,11 @@ export class UsersController {
 
   @Get('actions')
   @ApiOperation({ summary: 'Get all user actions' })
-  @Roles({ roles: ['Admin'] }) // Only Admins can view actions
-  async getAllActions(): Promise<string[]> {
+  // @ApiBearerAuth('JWT')
+  // @UseGuards(AuthGuard('jwt'))
+  @Roles({ roles: ['Admin'] })
+  async getAllActions(@Request() req): Promise<string[]> {
+    console.log('User:', req.user);
     return this.usersService.getAllActions();
   }
 
@@ -58,35 +62,35 @@ export class UsersController {
   }
 
 
-  // src/users/users.controller.ts
-  // Note: Only the new endpoint is shown; add it to your existing UsersController
-
-  @Delete('logs/audit')
-  @ApiOperation({ summary: 'Delete audit logs with optional filters' })
-  @ApiQuery({ name: 'date', required: false, description: "Format: 'YYYY-MM-DD'" })
-  @ApiQuery({ name: 'actor', required: false, description: "Username of the Actor or 'system'" })
-  @ApiQuery({ name: 'action', required: false, description: "Name of the Action" })
-  @ApiQuery({ name: 'startTime', required: false, description: "Format: 'HH:mm'" })
-  @ApiQuery({ name: 'endTime', required: false, description: "Format: 'HH:mm'" })
+  // @Delete('logs/audit')
+  // @ApiOperation({ summary: 'Delete audit logs with optional filters' })
+  // @ApiQuery({ name: 'date', required: false, description: "Format: 'YYYY-MM-DD'" })
+  // @ApiQuery({ name: 'actor', required: false, description: "Username of the Actor or 'system'" })
+  // @ApiQuery({ name: 'action', required: false, description: "Name of the Action" })
+  // @ApiQuery({ name: 'startTime', required: false, description: "Format: 'HH:mm'" })
+  // @ApiQuery({ name: 'endTime', required: false, description: "Format: 'HH:mm'" })
+  // @ApiBearerAuth('JWT')
   // @UseGuards(AuthGuard('jwt'))
-  async deleteAuditLog(
-    @Res() res: Response,
-    @Query('date') date?: string,
-    @Query('actor') actor?: string,
-    @Query('action') action?: string,
-    @Query('startTime') startTime?: string,
-    @Query('endTime') endTime?: string,
-  ) {
+  // async deleteAuditLog(
+  //   @Res() res: Response,
+  //   @Query('date') date?: string,
+  //   @Query('actor') actor?: string,
+  //   @Query('action') action?: string,
+  //   @Query('startTime') startTime?: string,
+  //   @Query('endTime') endTime?: string,
+  // ) {
 
-    const result = await this.usersService.deleteAuditLogs({
-      date: date || null,
-      actor: actor || null,
-      action: action || null,
-      startTime: startTime || null,
-      endTime: endTime || null,
-    });
-    return res.json({ message: 'Logs deleted successfully', deletedCount: result.deletedCount });
-  }
+  //   const result = await this.usersService.deleteAuditLogs({
+  //     date: date || null,
+  //     actor: actor || null,
+  //     action: action || null,
+  //     startTime: startTime || null,
+  //     endTime: endTime || null,
+  //   });
+  //   return res.json({ message: 'Logs deleted successfully', deletedCount: result.deletedCount });
+  // }
+
+
 
   // ==============================
   // User Endpoints
@@ -96,6 +100,7 @@ export class UsersController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new user' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   @ApiBody({ type: CreateUserDto })
   create(@Body() createUserDto: CreateUserDto) {
@@ -104,9 +109,9 @@ export class UsersController {
 
   @Post('without-roles')
   @ApiOperation({ summary: 'Create a new user without Group and Role' })
-  @UseGuards(AuthGuard('jwt'))
+  // @ApiBearerAuth('JWT')
+  // @UseGuards(AuthGuard('jwt'))
   @ApiBody({ type: CreateUserDto })
-  @Roles({ roles: ['Admin'] }) // Only Admins can create users
   createUserWithoutRoles(@Body() createUserDto: CreateUserDto) {
     return this.usersService.createUserWithoutRoles(createUserDto);
   }
@@ -114,6 +119,7 @@ export class UsersController {
   @Put('/:id')
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiBody({ type: UpdateUserDto })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Update a user' })
   update(@Param('id') id: string, @Body() updateData: UpdateUserDto) {
@@ -122,6 +128,7 @@ export class UsersController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a user' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async delete(@Param('id') id: string) {
     return this.usersService.deleteUser(id);
@@ -138,6 +145,7 @@ export class UsersController {
 
   @Post('logout')
   @ApiOperation({ summary: 'Logout a user' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   @ApiBody({ type: LogoutDto })
   async logout(@Body() body: { refreshToken: string }): Promise<any> {
@@ -147,6 +155,7 @@ export class UsersController {
 
   @Post('reset-password/:id')
   @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Reset a user password' })
   @ApiBody({ type: ResetPasswordDto })
@@ -160,6 +169,7 @@ export class UsersController {
 
   @Post('refresh-token')
   @HttpCode(HttpStatus.OK)
+  // @ApiBearerAuth('JWT')
   // @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiBody({
@@ -191,6 +201,7 @@ export class UsersController {
 
   @Get()
   @ApiOperation({ summary: 'Find all users' })
+  // @ApiBearerAuth()
   // @UseGuards(AuthGuard('jwt'))
   async findAll(@Query() pageOptionsDto: PageOptionsDto) {
     return await this.usersService.findAllUsers(pageOptionsDto);
@@ -205,6 +216,7 @@ export class UsersController {
 
   @Get('by-id/:id')
   @ApiOperation({ summary: 'Find a user by ID' })
+  // @ApiBearerAuth('JWT')
   // @UseGuards(AuthGuard('jwt'))
   findById(@Param('id') id: string) {
     return this.usersService.findUserById(id);
@@ -212,6 +224,7 @@ export class UsersController {
 
   @Get('by-username/:username')
   @ApiOperation({ summary: 'Find a user by username' })
+  // @ApiBearerAuth('JWT')
   // @UseGuards(AuthGuard('jwt'))
   findByName(@Param('username') username: string) {
     return this.usersService.findUserByUsername(username);
@@ -219,6 +232,7 @@ export class UsersController {
 
   @Get('by-email/:email')
   @ApiOperation({ summary: 'Find a user by email' })
+  // @ApiBearerAuth('JWT')
   // @UseGuards(AuthGuard('jwt'))
   findByEmail(@Param('email') email: string) {
     return this.usersService.findUserByEmail(email);
@@ -242,6 +256,7 @@ export class UsersController {
       }
     }
   })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async createRealmRole(@Body() body: { roleName: string; description: string }): Promise<any> {
     await this.usersService.createRealmRole(body.roleName, body.description);
@@ -259,6 +274,7 @@ export class UsersController {
     }
   })
   @ApiOperation({ summary: 'Update a Realm role name or description' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async updateRealmRole(
     @Param('roleName') roleName: string,
@@ -271,6 +287,7 @@ export class UsersController {
   @Delete('roles/:roleName')
   @ApiParam({ name: 'roleName', description: 'RealmRole name to delete' })
   @ApiOperation({ summary: 'Delete a realm role' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async deleteRealmRole(@Param('roleName') roleName: string): Promise<any> {
     await this.usersService.deleteRealmRole(roleName);
@@ -279,6 +296,7 @@ export class UsersController {
 
   @Get('roles')
   @ApiOperation({ summary: 'Get all Realm roles' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getAllRealmRoles(): Promise<any[]> {
     return this.usersService.getAllRealmRoles();
@@ -286,6 +304,7 @@ export class UsersController {
 
   @Get('users-by-role/:role')
   @ApiOperation({ summary: 'Find all users by Realm role name' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   findByRealmRole(@Param('role') role: string) {
     return this.usersService.findAllUsersByRealmRole(role);
@@ -294,6 +313,7 @@ export class UsersController {
   @Get(':userId/roles')
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiOperation({ summary: 'Get all Realm roles of a user' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getUserRealmRoles(@Param('userId') userId: string): Promise<any[]> {
     return this.usersService.getUserRealmRoles(userId);
@@ -303,6 +323,7 @@ export class UsersController {
   // @ApiParam({ name: 'id', description: 'User ID' })
   // @ApiParam({ name: 'role', description: 'Role name' })
   // @ApiOperation({ summary: 'Assign a Realm role' })
+  // @ApiBearerAuth('JWT')
   // @UseGuards(AuthGuard('jwt'))
   // async assignRole(@Param('id') userId: string, @Param('role') role: string) {
   //   await this.usersService.assignRole(userId, role);
@@ -312,6 +333,7 @@ export class UsersController {
   // @ApiParam({ name: 'id', description: 'User ID' })
   // @ApiParam({ name: 'role', description: 'Role name' })
   // @ApiOperation({ summary: 'Deassign a Realm role' })
+  // @ApiBearerAuth('JWT')
   // @UseGuards(AuthGuard('jwt'))
   // async deAssignRealmRole(@Param('id') userId: string, @Param('role') role: string) {
   //   await this.usersService.deAssignRealmRole(userId, role);
@@ -329,6 +351,7 @@ export class UsersController {
   @Post('groups')
   @ApiOperation({ summary: 'Create a new group' })
   @ApiBody({ type: CreateGroupDto })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async createGroup(@Body() createGroupDto: CreateGroupDto): Promise<any> {
     await this.usersService.createGroup(createGroupDto.name, createGroupDto.attributes);
@@ -339,6 +362,7 @@ export class UsersController {
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Update a group' })
   @ApiBody({ type: UpdateGrouprDto })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async updateGroup(
     @Param('groupId') groupId: string,
@@ -351,6 +375,7 @@ export class UsersController {
   @Delete('groups/:groupId')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Delete a group' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async deleteGroup(@Param('groupId') groupId: string): Promise<any> {
     await this.usersService.deleteGroup(groupId);
@@ -359,6 +384,7 @@ export class UsersController {
 
   @Get('groups')
   @ApiOperation({ summary: 'Get all groups' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getAllGroups(): Promise<any[]> {
     return this.usersService.getAllGroups();
@@ -367,6 +393,7 @@ export class UsersController {
   @Get('groups/:groupId')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Get group details by ID' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getGroupById(@Param('groupId') groupId: string): Promise<any> {
     return this.usersService.getGroupById(groupId);
@@ -375,6 +402,7 @@ export class UsersController {
   @Get('groups/by-name/:groupName')
   @ApiParam({ name: 'groupName', description: 'Group name' })
   @ApiOperation({ summary: 'Get group details by name' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getGroupByName(@Param('groupName') groupName: string): Promise<any> {
     return this.usersService.getGroupByName(groupName);
@@ -383,6 +411,7 @@ export class UsersController {
   @Get(':userId/groups')
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiOperation({ summary: 'Get all groups for a user' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getUserGroups(@Param('userId') userId: string): Promise<any[]> {
     return this.usersService.getUserGroups(userId);
@@ -392,6 +421,7 @@ export class UsersController {
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiParam({ name: 'userId', description: 'User Database ID' })
   @ApiOperation({ summary: 'Add a user to a group' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async addUserToGroup(@Param('userId') userId: string, @Param('groupId') groupId: string): Promise<any> {
     await this.usersService.addUserToGroup(userId, groupId);
@@ -402,6 +432,7 @@ export class UsersController {
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiParam({ name: 'userId', description: 'User Database ID' })
   @ApiOperation({ summary: 'Remove a user from a group' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async removeUserFromGroup(@Param('userId') userId: string, @Param('groupId') groupId: string): Promise<any> {
     await this.usersService.removeUserFromGroup(userId, groupId);
@@ -411,6 +442,7 @@ export class UsersController {
   @Get('groups/:groupId/users')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Get all users in a group' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getAllUsersFromGroup(@Param('groupId') groupId: string): Promise<any[]> {
     return this.usersService.getAllUsersFromGroup(groupId);
@@ -420,6 +452,7 @@ export class UsersController {
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiParam({ name: 'roleName', description: 'Role name' })
   @ApiOperation({ summary: 'Add a role to a group' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async addRoleToGroup(@Param('groupId') groupId: string, @Param('roleName') roleName: string): Promise<any> {
     await this.usersService.addRoleToGroup(groupId, roleName);
@@ -430,6 +463,7 @@ export class UsersController {
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiParam({ name: 'roleName', description: 'Role name' })
   @ApiOperation({ summary: 'Remove a role from a group' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async removeRoleFromGroup(@Param('groupId') groupId: string, @Param('roleName') roleName: string): Promise<any> {
     await this.usersService.removeRoleFromGroup(groupId, roleName);
@@ -439,6 +473,7 @@ export class UsersController {
   @Get('groups/:groupId/roles')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Get roles assigned to a group' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getGroupRoles(@Param('groupId') groupId: string): Promise<any> {
     return this.usersService.getGroupRoles(groupId);
@@ -462,6 +497,7 @@ export class UsersController {
       }
     }
   })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async createClientRole(@Body() body: { roleName: string; description: string }): Promise<any> {
     await this.usersService.createClientRole(body.roleName, body.description);
@@ -479,6 +515,7 @@ export class UsersController {
     }
   })
   @ApiOperation({ summary: 'Update a Client role name or description' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async updateClientRole(
     @Param('roleName') roleName: string,
@@ -490,6 +527,7 @@ export class UsersController {
 
   @Get('client-roles')
   @ApiOperation({ summary: 'Get all Client roles' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getAllClientRoles(): Promise<any[]> {
     return this.usersService.getAllClientRoles();
@@ -498,6 +536,7 @@ export class UsersController {
   @Delete('client-roles/:roleName')
   @ApiParam({ name: 'roleName', description: 'Client role name to delete' })
   @ApiOperation({ summary: 'Delete a Client role' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async deleteClientRole(@Param('roleName') roleName: string): Promise<any> {
     await this.usersService.deleteClientRole(roleName);
@@ -508,6 +547,7 @@ export class UsersController {
   @ApiParam({ name: 'roleName', description: 'Client role name' })
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Add a Client role to a group' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async addClientRoleToGroup(
     @Param('groupId') groupId: string,
@@ -521,6 +561,7 @@ export class UsersController {
   @ApiParam({ name: 'roleName', description: 'Client role name' })
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Remove a Client role from a group' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async removeClientRoleFromGroup(
     @Param('groupId') groupId: string,
@@ -534,6 +575,7 @@ export class UsersController {
   @ApiParam({ name: 'roleName', description: 'Client role name' })
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiOperation({ summary: 'Add a Client role to a user' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async addClientRoleToUser(
     @Param('userId') userId: string,
@@ -547,6 +589,7 @@ export class UsersController {
   @ApiParam({ name: 'roleName', description: 'Client role name' })
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiOperation({ summary: 'Remove a Client role from a user' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async removeClientRoleFromUser(
     @Param('userId') userId: string,
@@ -559,6 +602,7 @@ export class UsersController {
   @Get('client-roles/users/:userId')
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiOperation({ summary: 'Find all Client roles by User ID' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async findClientRolesByUserId(@Param('userId') userId: string): Promise<any[]> {
     return this.usersService.findClientRolesByUserId(userId);
@@ -567,6 +611,7 @@ export class UsersController {
   @Get('client-roles/:roleName/users')
   @ApiParam({ name: 'roleName', description: 'Client role name' })
   @ApiOperation({ summary: 'Find all users by Client role name' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async findUsersByClientRole(@Param('roleName') roleName: string): Promise<any[]> {
     return this.usersService.findUsersByClientRole(roleName);
@@ -591,6 +636,7 @@ export class UsersController {
       },
     },
   })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async createClient(@Body() clientData: any): Promise<any> {
     return this.usersService.createClient(clientData);
@@ -599,6 +645,7 @@ export class UsersController {
   @Delete('clients/:clientId')
   @ApiParam({ name: 'clientId', description: 'Client ID' })
   @ApiOperation({ summary: 'Delete a client' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async deleteClient(@Param('clientId') clientId: string): Promise<void> {
     return this.usersService.deleteClient(clientId);
@@ -615,6 +662,7 @@ export class UsersController {
     },
   })
   @ApiOperation({ summary: 'Update a client' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async updateClient(
     @Param('clientId') clientId: string,
@@ -626,6 +674,7 @@ export class UsersController {
   @Get('clients/by-name/:clientName')
   @ApiParam({ name: 'clientName', description: 'Client Name' })
   @ApiOperation({ summary: 'Get a client by name: ClientID' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getClientByName(@Param('clientName') clientName: string): Promise<any> {
     return this.usersService.getClientByName(clientName);
@@ -634,6 +683,7 @@ export class UsersController {
   @Get('clients/:clientId')
   @ApiParam({ name: 'clientId', description: 'Client ID' })
   @ApiOperation({ summary: 'Get a client by ID: ahahaj984-df98-df98-df98-df98-df98' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getClientById(@Param('clientId') clientId: string): Promise<any> {
     return this.usersService.getClientById(clientId);
@@ -641,6 +691,7 @@ export class UsersController {
 
   @Get('clients')
   @ApiOperation({ summary: 'Get all clients' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async getAllClients(): Promise<any[]> {
     return this.usersService.getAllClients();
@@ -657,6 +708,7 @@ export class UsersController {
     },
   })
   @ApiOperation({ summary: 'Add a role to a client' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async addClientRole(
     @Param('clientId') clientId: string,
@@ -669,6 +721,7 @@ export class UsersController {
   @ApiParam({ name: 'clientId', description: 'Client ID' })
   @ApiParam({ name: 'roleName', description: 'Role Name' })
   @ApiOperation({ summary: 'Remove a role from a client' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async removeClientRole(
     @Param('clientId') clientId: string,
@@ -680,6 +733,7 @@ export class UsersController {
   @Post('clients/:clientId/regenerate-secret')
   @ApiParam({ name: 'clientId', description: 'Client ID' })
   @ApiOperation({ summary: 'Regenerate client secret' })
+  @ApiBearerAuth('JWT')
   @UseGuards(AuthGuard('jwt'))
   async regenerateClientSecret(@Param('clientId') clientId: string): Promise<any> {
     return this.usersService.regenerateClientSecret(clientId);

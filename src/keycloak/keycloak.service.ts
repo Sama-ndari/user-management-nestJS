@@ -14,6 +14,7 @@ import { ClientService } from './managements/clientManagement.service';
 import { Log, LogDocument } from '../users/entities/log.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { CommonHelpers } from 'src/common/helpers';
 
 @Injectable()
 export class KeycloakService {
@@ -116,13 +117,13 @@ export class KeycloakService {
     }
   }
 
-  async getAuditLogs2(filters: {
+  async getAuditLogsDB(filters: {
     date?: string;
     actor?: string;
     action?: string;
     startTime?: string; // format: 'HH:mm'
     endTime?: string; // format: 'HH:mm'
-  }): Promise<any[]> {
+  }): Promise<{ logs: any[]; count: number }> {
     let query: any = {};
 
     if (filters.actor) query.actor = filters.actor;
@@ -136,17 +137,18 @@ export class KeycloakService {
     }
 
     try {
-      const logs = await this.logModel.find(query).exec();
-      return logs.map(log => ({
+      const logs = await CommonHelpers.retry(async () => await this.logModel.find(query).exec());
+      const formattedLogs = logs.map(log => ({
         action: log.action,
         actor: log.actor,
         timestamp: log.timestamp,
         target: log.target,
         details: log.details,
       }));
+      return { logs: formattedLogs, count: formattedLogs.length };
     } catch (error) {
       console.error('Error fetching logs:', error);
-      return [];
+      return { logs: [], count: 0 };
     }
   }
 
@@ -219,8 +221,8 @@ export class KeycloakService {
     return this.userKeycloakService.createUserWithoutRoles(user);
   }
 
-  async sendVerificationEmail(userId: string, token?: string): Promise<void> {
-    return this.userKeycloakService.sendVerificationEmail(userId, token);
+  async sendVerificationEmail(userEmail: string, username: string, tempPassword: string): Promise<void> {
+    return this.userKeycloakService.sendVerificationEmail(userEmail, username, tempPassword);
   }
 
   async updateUser(id: string, user: any): Promise<any> {
@@ -453,7 +455,6 @@ export class KeycloakService {
   }
 
 }
-
 
 
 

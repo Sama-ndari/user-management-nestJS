@@ -133,16 +133,26 @@ export class DatabaseService {
                 //     return users;
                 // 
                 // const foundUsers = users.map(user => CommonHelpers.transformDocument(user));
+                if (!pageOptionsDto) {
+                    throw new Error('Page options are required');
+                }
+
+                const take = pageOptionsDto.take ?? 10; // Default value if undefined
+                const skip = pageOptionsDto.skip ?? 0;  // Default value if undefined
+
                 const users = await this.UserModel.find()
-                .limit(pageOptionsDto?.take || 10) // Default to 10 if undefined
-                .skip(pageOptionsDto?.skip || 0)  // Default to 0 if undefined
+                .limit(take)
+                .skip(skip)
                 .lean()
                 .exec();
                 return users;
             });
             const items = users.map(user => CommonHelpers.transformDocument(user));
             const itemCount = await this.UserModel.countDocuments().exec();
-            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: pageOptionsDto || new PageOptionsDto() });
+            if (!pageOptionsDto) {
+                throw new Error('Page options are required');
+            }
+            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
             return new PageDto(items, pageMetaDto);
             // return foundUsers;
         } catch (error) {

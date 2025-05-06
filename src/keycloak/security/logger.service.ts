@@ -15,15 +15,18 @@ export class LoggerService {
   ) {
     this.logger = winston.createLogger({
       level: 'info',
-      // format: winston.format.json(),
-      format: winston.format.printf(({ message }) => {
-        // message is the logEntry object
-        return JSON.stringify(message);
-      }),
-      transports: [
-        new winston.transports.File({ filename: 'logs/audit.log' }),
-      ],
+      format: winston.format.json(),
+      transports: [],
     });
+    // this.logger = winston.createLogger({
+    //   level: 'info',
+    //   format: winston.format.printf(({ message }) => {
+    //     return JSON.stringify(message);
+    //   }),
+    //   transports: [
+    //     new winston.transports.File({ filename: 'logs/audit.log' }),
+    //   ],
+    // });
   }
 
   async logAction(action: string, target: any, details?: any) {
@@ -36,7 +39,7 @@ export class LoggerService {
       target,
       details, 
     };
-    // await this.logModel.create(logEntry);
+    await this.logModel.create(logEntry);
     this.logger.info(logEntry);
   }
 }
