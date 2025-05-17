@@ -25,10 +25,6 @@ export class User extends Document{
   @ApiProperty({ description: 'The email address of the user', example: 'johndoe@example.com' })
   email: string;
 
-  // @Prop({ type: String, required: true })
-  // @ApiProperty({ description: 'The password of the user', example: 'P@ssw0rd' })
-  // password: string;
-
   @Prop({ type: String, required: false })
   @ApiProperty({ description: 'The first name of the user', example: 'John', required: false })
   firstName?: string;
@@ -57,9 +53,6 @@ export class User extends Document{
   @ApiProperty({ description: 'The status of the user', example: 'active', default: 'active', required: false })
   status?: UserStatus;
 
-  // @Prop({ type: String, required: true })
-  // @ApiProperty({ description: 'The role of the user', example: 'admin' })
-  // role: string;
 }
 
 export type UserDocument = User & Document;

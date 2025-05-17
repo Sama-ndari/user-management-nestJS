@@ -242,6 +242,25 @@ export class GroupService {
     }
   }
 
+  async getAllUsersFromNameGroup(groupName: string): Promise<any[]> {
+    const token = await this.getAdminToken();
+    const groupId = await this.getGroupByName(groupName);
+    const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/groups/${groupId.id}/members`;
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+      );
+      return response.data;
+    } catch (error) {
+      throw new HttpException(`Failed to fetch users from group: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   async getGroupById(groupId: string): Promise<any> {
     const token = await this.getAdminToken();
     const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/groups/${groupId}`;

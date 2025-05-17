@@ -1,4 +1,4 @@
-//src/users/keycloak/managements/userManagement.service.ts
+//src/keycloak/managements/userManagement.service.ts
 import { BadRequestException, forwardRef, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom, lastValueFrom } from "rxjs";
@@ -243,34 +243,6 @@ export class UserKeycloakService {
 
   async sendVerificationEmail(userEmail: string, username: string, tempPassword: string): Promise<void> {
     await this.emailService.sendLoginCredentials(userEmail, username, tempPassword);
-    // if (!token) {
-    //   token = await this.getAdminToken();
-    // }
-    // const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${userId}/execute-actions-email`;
-    // const actions = ['VERIFY_EMAIL'];
-    // const queryParams = new URLSearchParams({
-    //   client_id: process.env.KEYCLOAK_CLIENT_ID || 'nestjs-app',
-    //   redirect_uri: process.env.KEYCLOAK_ADMIN_REDIRECT_URL || 'http://google.com', // Adjust to your frontend login page
-    //   lifespan: '43200', // 12 hours in seconds
-    // });
-
-    // try {
-    //   await firstValueFrom(
-    //     this.httpService.put(`${url}?${queryParams.toString()}`, actions, {
-    //       headers: {
-    //         Authorization: `Bearer ${token}`,
-    //         'Content-Type': 'application/json',
-    //       },
-    //     }),
-    //   );
-    //   console.log(`Verification email sent for user ${userId}`);
-    // } catch (error) {
-    //   console.error('Send verification email error:', error.response?.data || error.message);
-    //   throw new HttpException(
-    //     `Failed to send verification email: ${error.response?.data?.errorMessage || error.message}`,
-    //     HttpStatus.INTERNAL_SERVER_ERROR,
-    //   );
-    // }
   }
 
   async updateUser(id: string, user: any): Promise<any> {
@@ -294,6 +266,7 @@ export class UserKeycloakService {
   async resetPassword(id: string, newPassword: string): Promise<any> {
     const token = await this.getAdminToken();
     const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${id}/reset-password`;
+    
     const payload = {
       type: 'password',
       value: newPassword,
@@ -311,10 +284,112 @@ export class UserKeycloakService {
       );
       // Optionally, fetch and return the updated user
       const updatedUser = await this.findUserById(id);
+      await this.emailService.sendUpdateCredentials(updatedUser.email, updatedUser.username, newPassword);
       return updatedUser;
     } catch (error) {
       console.error('Reset password error response:', error.response?.data);
       throw new HttpException(`Failed to reset password: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async getUserCredentials(identifier: string): Promise<any> {
+    const token = await this.getAdminToken();
+    let user;
+
+    try {
+      // Try to find user by email first
+      if (identifier.includes('@')) {
+        user = await this.findUserByEmail(identifier, token);
+      } else {
+        // If not email format, try username
+        user = await this.findUserByUsername(identifier, token);
+      }
+
+      if (!user) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+
+      const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${user.id}/credentials`;
+
+      const response = await firstValueFrom(
+        this.httpService.get(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+      );
+
+      console.log('response', response.data);
+
+      return {
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        credentials: response.data
+      };
+
+    } catch (error) {
+      if (error.response?.status === 404) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException(
+        `Failed to get user credentials: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async generateNewPassword(identifier: string): Promise<string> {
+    const token = await this.getAdminToken();
+    let updatedUser;
+
+    // Try to find user by email first if identifier contains @
+    if (identifier.includes('@')) {
+      updatedUser = await this.findUserByEmail(identifier, token);
+    } else {
+      // If not email format, try username
+      updatedUser = await this.findUserByUsername(identifier, token);
+    }
+
+    if (!updatedUser) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+
+      identifier = updatedUser.id; // Update identifier to use Keycloak ID
+    try {
+      // Générer un mot de passe aléatoire
+      const newPassword = Math.random().toString(36).slice(-12);
+      console.log("Generated password",newPassword);
+      const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${identifier}/reset-password`;
+
+      await firstValueFrom(
+        this.httpService.put(url, 
+          {
+            type: "password",
+            value: newPassword,
+            temporary: false
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+      );
+
+      
+      await this.emailService.sendUpdateCredentials(updatedUser.email, updatedUser.username, newPassword);
+      return newPassword;
+
+    } catch (error) {
+      if (error.response?.status === 404) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+      throw new HttpException(
+        `Failed to generate new password: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 

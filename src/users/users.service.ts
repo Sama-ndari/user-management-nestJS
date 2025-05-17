@@ -1,6 +1,6 @@
 //src/users/users.service.ts
 import { Injectable } from '@nestjs/common';
-import { UserRepresentation } from './dto/create-user.dto';
+import { GoogleAuthDto, UserRepresentation } from './dto/create-user.dto';
 import { TransactionsService } from '../transactions/transactions.service';
 import * as dotenv from 'dotenv';
 import { LoginDto } from './dto/login.dto';
@@ -59,6 +59,11 @@ export class UsersService {
     return createdUser;
   }
 
+  async createUserWithGoogle(googleAuthDto: GoogleAuthDto): Promise<any> {
+    const createdUser = await this.transactionsService.createUserWithGoogle(googleAuthDto);
+    return createdUser;
+  }
+
   async updateUser(id: string, userDto: any) {
     const updatedUser = await this.transactionsService.updateUser(id, userDto);
     return updatedUser;
@@ -66,6 +71,10 @@ export class UsersService {
 
   async resetPassword(id: string, newPassword: string): Promise<any> {
     return this.transactionsService.resetPassword(id, newPassword);
+  }
+
+  async generateNewPassword(identifier: string): Promise<any>{
+    return this.transactionsService.generateNewPassword(identifier);
   }
 
   async findUserById(id: string): Promise<UserRepresentation> {
@@ -80,8 +89,12 @@ export class UsersService {
     return this.transactionsService.getConnectedUsers();
   }
 
-  async findAllUsers(pageOptionsDto?): Promise<PageDto<any>> {
-    return await this.transactionsService.findAllUsers(pageOptionsDto);
+  async findAllUsers(pageOptionsDto?,searchUserDto?): Promise<PageDto<any>> {
+    return await this.transactionsService.findAllUsers(pageOptionsDto,searchUserDto);
+  }
+
+  async findAllUsersByStatus(status: string, pageOptionsDto?): Promise<PageDto<any>> {
+    return await this.transactionsService.findAllUsersByStatus(status, pageOptionsDto);
   }
 
   async findUserByEmail(email: string): Promise<UserRepresentation> {
@@ -176,6 +189,10 @@ export class UsersService {
 
   async getAllUsersFromGroup(groupId: string): Promise<any[]> {
     return this.transactionsService.getAllUsersFromGroup(groupId);
+  }
+
+  async getAllUsersFromNameGroup(groupName: string): Promise<any[]> {
+    return this.transactionsService.getAllUsersFromNameGroup(groupName);
   }
 
   async getGroupById(groupId: string): Promise<any> {

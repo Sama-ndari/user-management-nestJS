@@ -1,4 +1,4 @@
-//src/users/keycloak/managements/clientRole.service.ts
+//src/keycloak/managements/clientRole.service.ts
 import { forwardRef, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { HttpService } from "@nestjs/axios";
 import { firstValueFrom } from "rxjs";

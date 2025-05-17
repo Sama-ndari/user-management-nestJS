@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Get, Request, Patch, Delete, Param, Put, HttpCode, HttpStatus, Query, Res, UseGuards, Req } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto, ResetPasswordDto } from './dto/create-user.dto';
+import { CreateUserDto, GoogleAuthDto, ResetPasswordDto, SearchUserDto } from './dto/create-user.dto';
 import { Roles } from 'nest-keycloak-connect';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -10,15 +10,14 @@ import { PageOptionsDto } from 'src/common/page-options-dto/page-options-dto';
 import { CreateGroupDto, UpdateGrouprDto } from './dto/create-group.dto';
 import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
+import { UserStatus } from './entities/user.entity';
 
 
-@ApiTags('User Waangu Marketplace')
 @Controller('users')
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
   ) { }
-
 
 
 
@@ -28,6 +27,8 @@ export class UsersController {
 
 
 
+  
+  @ApiTags('Audit & System')
   @Get('actions')
   @ApiOperation({ summary: 'Get all user actions' })
   // @ApiBearerAuth('JWT')
@@ -38,6 +39,7 @@ export class UsersController {
     return this.usersService.getAllActions();
   }
 
+  @ApiTags('Audit & System')
   @Get('logs/audit')
   @ApiOperation({ summary: 'Get audit logs with optional filters' })
   @ApiQuery({ name: 'date', required: false, description: "Format: 'YYYY-MM-DD'" })
@@ -61,7 +63,7 @@ export class UsersController {
     }
   }
 
-
+  // @ApiTags('Audit & System')
   // @Delete('logs/audit')
   // @ApiOperation({ summary: 'Delete audit logs with optional filters' })
   // @ApiQuery({ name: 'date', required: false, description: "Format: 'YYYY-MM-DD'" })
@@ -90,14 +92,11 @@ export class UsersController {
   //   return res.json({ message: 'Logs deleted successfully', deletedCount: result.deletedCount });
   // }
 
-
-
   // ==============================
   // User Endpoints
   // ==============================
 
-
-
+  @ApiTags('User Management')
   @Post()
   @ApiOperation({ summary: 'Create a new user' })
   @ApiBearerAuth('JWT')
@@ -107,6 +106,17 @@ export class UsersController {
     return this.usersService.createUser(createUserDto);
   }
 
+  @ApiTags('User Management')
+  @Post('google-auth')
+  @ApiOperation({ summary: 'Create or authenticate a user with Google' })
+  //   @ApiBearerAuth('JWT')
+  // @UseGuards(AuthGuard('jwt'))
+  @ApiBody({ type: GoogleAuthDto })
+  async googleAuth(@Body() googleAuthDto: GoogleAuthDto) {
+    // return this.usersService.createUserWithGoogle(googleAuthDto);
+  }
+
+  @ApiTags('User Management')
   @Post('without-roles')
   @ApiOperation({ summary: 'Create a new user without Group and Role' })
   // @ApiBearerAuth('JWT')
@@ -116,6 +126,7 @@ export class UsersController {
     return this.usersService.createUserWithoutRoles(createUserDto);
   }
 
+  @ApiTags('User Management')
   @Put('/:id')
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiBody({ type: UpdateUserDto })
@@ -126,6 +137,7 @@ export class UsersController {
     return this.usersService.updateUser(id, updateData);
   }
 
+  @ApiTags('User Management')
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a user' })
   @ApiBearerAuth('JWT')
@@ -134,6 +146,7 @@ export class UsersController {
     return this.usersService.deleteUser(id);
   }
 
+  @ApiTags('Authentication')
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login a user' })
@@ -143,6 +156,7 @@ export class UsersController {
     return { message: 'Login successful', tokenData };
   }
 
+  @ApiTags('Authentication')
   @Post('logout')
   @ApiOperation({ summary: 'Logout a user' })
   @ApiBearerAuth('JWT')
@@ -153,6 +167,7 @@ export class UsersController {
     return { message: 'Logout successful' };
   }
 
+  @ApiTags('Authentication')
   @Post('reset-password/:id')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT')
@@ -167,6 +182,7 @@ export class UsersController {
     return { message: 'Password reset successfully', user: updatedUser };
   }
 
+  @ApiTags('Authentication')
   @Post('refresh-token')
   @HttpCode(HttpStatus.OK)
   // @ApiBearerAuth('JWT')
@@ -184,6 +200,7 @@ export class UsersController {
     return { access: newAccessToken };
   }
 
+  @ApiTags('Authentication')
   @Post('decode-token')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Decode an access token' })
@@ -199,14 +216,58 @@ export class UsersController {
     return { message: 'Token decoded successfully', decodedData };
   }
 
+  @ApiTags('Authentication')
+  @Post('new-credentials')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get new password' })
+  @ApiBody({
+    schema: {
+      properties: {
+        identifier: {
+          type: 'string',
+          description: 'Username or Email',
+          example: 'user@example.com'
+        }
+      }
+    }
+  })
+  async generateNewPassword(@Body('identifier') identifier: string): Promise<any> {
+    const credentials = await this.usersService.generateNewPassword(identifier);
+    return { message: 'Credentials updated successfully', credentials };
+  }
+
+  @ApiTags('User Management')
   @Get()
   @ApiOperation({ summary: 'Find all users' })
   // @ApiBearerAuth()
   // @UseGuards(AuthGuard('jwt'))
-  async findAll(@Query() pageOptionsDto: PageOptionsDto) {
-    return await this.usersService.findAllUsers(pageOptionsDto);
+  async findAll(
+    @Query() pageOptionsDto: PageOptionsDto,
+    @Query() searchUserDto: SearchUserDto
+  ) {
+    return await this.usersService.findAllUsers(pageOptionsDto, searchUserDto);
   }
 
+  @ApiTags('User Management')
+  @Get('by-status/:status')
+  @ApiOperation({ summary: 'Find all users by status' })
+  @ApiParam({
+    name: 'status',
+    enum: UserStatus,
+    enumName: 'UserStatus',
+    description: 'User status',
+    required: true,
+  })
+  // @ApiBearerAuth('JWT')
+  // @UseGuards(AuthGuard('jwt'))
+  async findAllUsersByStatus(
+    @Param('status') status: UserStatus,
+    @Query() pageOptionsDto: PageOptionsDto
+  ) {
+    return await this.usersService.findAllUsersByStatus(status, pageOptionsDto);
+  }
+
+  @ApiTags('User Management')
   @Get('connected')
   @ApiOperation({ summary: 'Find all connected users' })
   // @UseGuards(AuthGuard('jwt'))
@@ -214,6 +275,7 @@ export class UsersController {
     return this.usersService.getConnectedUsers();
   }
 
+  @ApiTags('User Management')
   @Get('by-id/:id')
   @ApiOperation({ summary: 'Find a user by ID' })
   // @ApiBearerAuth('JWT')
@@ -222,6 +284,7 @@ export class UsersController {
     return this.usersService.findUserById(id);
   }
 
+  @ApiTags('User Management')
   @Get('by-username/:username')
   @ApiOperation({ summary: 'Find a user by username' })
   // @ApiBearerAuth('JWT')
@@ -230,6 +293,7 @@ export class UsersController {
     return this.usersService.findUserByUsername(username);
   }
 
+  @ApiTags('User Management')
   @Get('by-email/:email')
   @ApiOperation({ summary: 'Find a user by email' })
   // @ApiBearerAuth('JWT')
@@ -238,14 +302,11 @@ export class UsersController {
     return this.usersService.findUserByEmail(email);
   }
 
-
-
   // ==============================
   // Realm Role Endpoints
   // ==============================
 
-
-
+  @ApiTags('Roles Management')
   @Post('role')
   @ApiOperation({ summary: 'Create a new Realm role' })
   @ApiBody({
@@ -263,6 +324,7 @@ export class UsersController {
     return { message: `Role '${body.roleName}' created successfully.` };
   }
 
+  @ApiTags('Roles Management')
   @Put('roles/:roleName')
   @ApiParam({ name: 'roleName', description: 'RealmRole name to update' })
   @ApiBody({
@@ -284,6 +346,7 @@ export class UsersController {
     return { message: `Role '${roleName}' updated successfully.` };
   }
 
+  @ApiTags('Roles Management')
   @Delete('roles/:roleName')
   @ApiParam({ name: 'roleName', description: 'RealmRole name to delete' })
   @ApiOperation({ summary: 'Delete a realm role' })
@@ -294,6 +357,7 @@ export class UsersController {
     return { message: `Role '${roleName}' deleted successfully.` };
   }
 
+  @ApiTags('Roles Management')
   @Get('roles')
   @ApiOperation({ summary: 'Get all Realm roles' })
   @ApiBearerAuth('JWT')
@@ -302,6 +366,7 @@ export class UsersController {
     return this.usersService.getAllRealmRoles();
   }
 
+  @ApiTags('Roles Management')
   @Get('users-by-role/:role')
   @ApiOperation({ summary: 'Find all users by Realm role name' })
   @ApiBearerAuth('JWT')
@@ -310,6 +375,7 @@ export class UsersController {
     return this.usersService.findAllUsersByRealmRole(role);
   }
 
+  @ApiTags('Roles Management')
   @Get(':userId/roles')
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiOperation({ summary: 'Get all Realm roles of a user' })
@@ -319,35 +385,11 @@ export class UsersController {
     return this.usersService.getUserRealmRoles(userId);
   }
 
-  // @Put('/:id/assign-role/:role')
-  // @ApiParam({ name: 'id', description: 'User ID' })
-  // @ApiParam({ name: 'role', description: 'Role name' })
-  // @ApiOperation({ summary: 'Assign a Realm role' })
-  // @ApiBearerAuth('JWT')
-  // @UseGuards(AuthGuard('jwt'))
-  // async assignRole(@Param('id') userId: string, @Param('role') role: string) {
-  //   await this.usersService.assignRole(userId, role);
-  // }
-
-  // @Put('/:id/deassign-role/:role')
-  // @ApiParam({ name: 'id', description: 'User ID' })
-  // @ApiParam({ name: 'role', description: 'Role name' })
-  // @ApiOperation({ summary: 'Deassign a Realm role' })
-  // @ApiBearerAuth('JWT')
-  // @UseGuards(AuthGuard('jwt'))
-  // async deAssignRealmRole(@Param('id') userId: string, @Param('role') role: string) {
-  //   await this.usersService.deAssignRealmRole(userId, role);
-  // }
-
-
-
   // ==============================
   // Group Endpoints
-  // ======
-  // ========================
+  // ==============================
 
-
-
+  @ApiTags('Group Management')
   @Post('groups')
   @ApiOperation({ summary: 'Create a new group' })
   @ApiBody({ type: CreateGroupDto })
@@ -358,6 +400,7 @@ export class UsersController {
     return { message: `Group '${createGroupDto.name}' created successfully.` };
   }
 
+  @ApiTags('Group Management')
   @Put('groups/:groupId')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Update a group' })
@@ -372,6 +415,7 @@ export class UsersController {
     return { message: `Group '${groupId}' updated successfully.` };
   }
 
+  @ApiTags('Group Management')
   @Delete('groups/:groupId')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Delete a group' })
@@ -382,14 +426,16 @@ export class UsersController {
     return { message: `Group '${groupId}' deleted successfully.` };
   }
 
+  @ApiTags('Group Management')
   @Get('groups')
   @ApiOperation({ summary: 'Get all groups' })
-  @ApiBearerAuth('JWT')
-  @UseGuards(AuthGuard('jwt'))
+  // @ApiBearerAuth('JWT')
+  // @UseGuards(AuthGuard('jwt'))
   async getAllGroups(): Promise<any[]> {
     return this.usersService.getAllGroups();
   }
 
+  @ApiTags('Group Management')
   @Get('groups/:groupId')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Get group details by ID' })
@@ -399,6 +445,7 @@ export class UsersController {
     return this.usersService.getGroupById(groupId);
   }
 
+  @ApiTags('Group Management')
   @Get('groups/by-name/:groupName')
   @ApiParam({ name: 'groupName', description: 'Group name' })
   @ApiOperation({ summary: 'Get group details by name' })
@@ -408,6 +455,7 @@ export class UsersController {
     return this.usersService.getGroupByName(groupName);
   }
 
+  @ApiTags('Group Management')
   @Get(':userId/groups')
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiOperation({ summary: 'Get all groups for a user' })
@@ -417,6 +465,7 @@ export class UsersController {
     return this.usersService.getUserGroups(userId);
   }
 
+  @ApiTags('Group Management')
   @Put('groups/:groupId/users/:userId')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiParam({ name: 'userId', description: 'User Database ID' })
@@ -428,6 +477,7 @@ export class UsersController {
     return { message: `User '${userId}' added to group '${groupId}' successfully.` };
   }
 
+  @ApiTags('Group Management')
   @Delete('groups/:groupId/users/:userId')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiParam({ name: 'userId', description: 'User Database ID' })
@@ -439,6 +489,7 @@ export class UsersController {
     return { message: `User '${userId}' removed from group '${groupId}' successfully.` };
   }
 
+  @ApiTags('Group Management')
   @Get('groups/:groupId/users')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Get all users in a group' })
@@ -448,6 +499,17 @@ export class UsersController {
     return this.usersService.getAllUsersFromGroup(groupId);
   }
 
+  @ApiTags('Group Management')
+  @Get('groups/by-name/:groupName/users')
+  @ApiParam({ name: 'groupName', description: 'Group name' })
+  @ApiOperation({ summary: 'Get all users in a group by group name' })
+  @ApiBearerAuth('JWT')
+  @UseGuards(AuthGuard('jwt'))
+  async getAllUsersFromGroupByName(@Param('groupName') groupName: string): Promise<any[]> {
+    return this.usersService.getAllUsersFromNameGroup(groupName);
+  }
+
+  @ApiTags('Group Management')
   @Post('groups/:groupId/roles/:roleName')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiParam({ name: 'roleName', description: 'Role name' })
@@ -459,6 +521,7 @@ export class UsersController {
     return { message: `Role '${roleName}' added to group '${groupId}' successfully.` };
   }
 
+  @ApiTags('Group Management')
   @Delete('groups/:groupId/roles/:roleName')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiParam({ name: 'roleName', description: 'Role name' })
@@ -470,6 +533,7 @@ export class UsersController {
     return { message: `Role '${roleName}' removed from group '${groupId}' successfully.` };
   }
 
+  @ApiTags('Group Management')
   @Get('groups/:groupId/roles')
   @ApiParam({ name: 'groupId', description: 'Group ID' })
   @ApiOperation({ summary: 'Get roles assigned to a group' })
@@ -483,10 +547,13 @@ export class UsersController {
 
 
   // ==============================
-  // Cient Role Endpoints
+  // Client Role Endpoints
   // ==============================
 
 
+
+
+  @ApiTags('Client Roles')
   @Post('client-roles')
   @ApiOperation({ summary: 'Create a new Client role' })
   @ApiBody({
@@ -504,6 +571,7 @@ export class UsersController {
     return { message: `Client role '${body.roleName}' created successfully.` };
   }
 
+  @ApiTags('Client Roles')
   @Put('client-roles/:roleName')
   @ApiParam({ name: 'roleName', description: 'Client role name to update' })
   @ApiBody({
@@ -525,6 +593,7 @@ export class UsersController {
     return { message: `Client role '${roleName}' updated successfully.` };
   }
 
+  @ApiTags('Client Roles')
   @Get('client-roles')
   @ApiOperation({ summary: 'Get all Client roles' })
   @ApiBearerAuth('JWT')
@@ -533,6 +602,7 @@ export class UsersController {
     return this.usersService.getAllClientRoles();
   }
 
+  @ApiTags('Client Roles')
   @Delete('client-roles/:roleName')
   @ApiParam({ name: 'roleName', description: 'Client role name to delete' })
   @ApiOperation({ summary: 'Delete a Client role' })
@@ -543,6 +613,7 @@ export class UsersController {
     return { message: `Client role '${roleName}' deleted successfully.` };
   }
 
+  @ApiTags('Client Roles')
   @Post('client-roles/:roleName/groups/:groupId')
   @ApiParam({ name: 'roleName', description: 'Client role name' })
   @ApiParam({ name: 'groupId', description: 'Group ID' })
@@ -557,6 +628,7 @@ export class UsersController {
     return { message: `Client role '${roleName}' added to group '${groupId}' successfully.` };
   }
 
+  @ApiTags('Client Roles')
   @Delete('client-roles/:roleName/groups/:groupId')
   @ApiParam({ name: 'roleName', description: 'Client role name' })
   @ApiParam({ name: 'groupId', description: 'Group ID' })
@@ -571,6 +643,7 @@ export class UsersController {
     return { message: `Client role '${roleName}' removed from group '${groupId}' successfully.` };
   }
 
+  @ApiTags('Client Roles')
   @Post('client-roles/:roleName/users/:userId')
   @ApiParam({ name: 'roleName', description: 'Client role name' })
   @ApiParam({ name: 'userId', description: 'User ID' })
@@ -585,6 +658,7 @@ export class UsersController {
     return { message: `Client role '${roleName}' added to user '${userId}' successfully.` };
   }
 
+  @ApiTags('Client Roles')
   @Delete('client-roles/:roleName/users/:userId')
   @ApiParam({ name: 'roleName', description: 'Client role name' })
   @ApiParam({ name: 'userId', description: 'User ID' })
@@ -599,6 +673,7 @@ export class UsersController {
     return { message: `Client role '${roleName}' removed from user '${userId}' successfully.` };
   }
 
+  @ApiTags('Client Roles')
   @Get('client-roles/users/:userId')
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiOperation({ summary: 'Find all Client roles by User ID' })
@@ -608,6 +683,7 @@ export class UsersController {
     return this.usersService.findClientRolesByUserId(userId);
   }
 
+  @ApiTags('Client Roles')
   @Get('client-roles/:roleName/users')
   @ApiParam({ name: 'roleName', description: 'Client role name' })
   @ApiOperation({ summary: 'Find all users by Client role name' })
@@ -619,12 +695,15 @@ export class UsersController {
 
 
 
+
   // ==============================
   // Client Management Endpoints
   // ==============================
 
 
 
+
+  @ApiTags('Client Management')
   @Post('clients')
   @ApiOperation({ summary: 'Create a new client' })
   @ApiBody({
@@ -642,6 +721,7 @@ export class UsersController {
     return this.usersService.createClient(clientData);
   }
 
+  @ApiTags('Client Management')
   @Delete('clients/:clientId')
   @ApiParam({ name: 'clientId', description: 'Client ID' })
   @ApiOperation({ summary: 'Delete a client' })
@@ -651,6 +731,7 @@ export class UsersController {
     return this.usersService.deleteClient(clientId);
   }
 
+  @ApiTags('Client Management')
   @Put('clients/:clientId')
   @ApiParam({ name: 'clientId', description: 'Client ID' })
   @ApiBody({
@@ -671,6 +752,7 @@ export class UsersController {
     return this.usersService.updateClient(clientId, clientData);
   }
 
+  @ApiTags('Client Management')
   @Get('clients/by-name/:clientName')
   @ApiParam({ name: 'clientName', description: 'Client Name' })
   @ApiOperation({ summary: 'Get a client by name: ClientID' })
@@ -680,6 +762,7 @@ export class UsersController {
     return this.usersService.getClientByName(clientName);
   }
 
+  @ApiTags('Client Management')
   @Get('clients/:clientId')
   @ApiParam({ name: 'clientId', description: 'Client ID' })
   @ApiOperation({ summary: 'Get a client by ID: ahahaj984-df98-df98-df98-df98-df98' })
@@ -689,6 +772,7 @@ export class UsersController {
     return this.usersService.getClientById(clientId);
   }
 
+  @ApiTags('Client Management')
   @Get('clients')
   @ApiOperation({ summary: 'Get all clients' })
   @ApiBearerAuth('JWT')
@@ -697,6 +781,7 @@ export class UsersController {
     return this.usersService.getAllClients();
   }
 
+  @ApiTags('Client Management')
   @Post('clients/:clientId/roles')
   @ApiParam({ name: 'clientId', description: 'Client ID' })
   @ApiBody({
@@ -717,6 +802,7 @@ export class UsersController {
     return this.usersService.addClientRole(clientId, body.roleName, body.description);
   }
 
+  @ApiTags('Client Management')
   @Delete('clients/:clientId/roles/:roleName')
   @ApiParam({ name: 'clientId', description: 'Client ID' })
   @ApiParam({ name: 'roleName', description: 'Role Name' })
@@ -730,6 +816,7 @@ export class UsersController {
     return this.usersService.removeClientRole(clientId, roleName);
   }
 
+  @ApiTags('Client Management')
   @Post('clients/:clientId/regenerate-secret')
   @ApiParam({ name: 'clientId', description: 'Client ID' })
   @ApiOperation({ summary: 'Regenerate client secret' })

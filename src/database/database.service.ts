@@ -1,7 +1,5 @@
-//src/users/database/database.service.ts
+//src/database/database.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { KeycloakService } from '../keycloak/keycloak.service';
-import { CreateUserDatabaseDto, CreateUserDto, UserRepresentation } from '../users/dto/create-user.dto';
 import { User, UserDocument } from 'src/users/entities/user.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model } from 'mongoose';
@@ -9,6 +7,7 @@ import { CommonHelpers } from 'src/common/helpers';
 import { PageOptionsDto } from 'src/common/page-options-dto/page-options-dto';
 import { PageMetaDto } from 'src/common/page-meta-dto/page-meta-dto';
 import { PageDto } from 'src/common/page-dto/page-dto';
+import { SearchUserDto } from 'src/users/dto/create-user.dto';
 
 @Injectable()
 export class DatabaseService {
@@ -38,7 +37,7 @@ export class DatabaseService {
                 cardNumber: userDto.cardNumber,
                 logo: userDto.logo,
                 status: userDto.status || 'pending',
-                
+
             }).filter(([_, value]) => value !== undefined && value !== null)
         );
         console.log('newUser', newUser);
@@ -55,7 +54,7 @@ export class DatabaseService {
             if (!existingUser) {
                 throw new NotFoundException('User not found');
             }
-        
+
 
             const user = Object.fromEntries(
                 Object.entries({
@@ -122,39 +121,40 @@ export class DatabaseService {
             throw new Error(`Error finding user by username: ${error.message}`);
         }
     }
-
-    async findAllUsers(pageOptionsDto?: PageOptionsDto): Promise<PageDto<any>> {
+    
+    async findAllUsers(
+        pageOptionsDto: PageOptionsDto,
+        searchUserDto?: SearchUserDto
+    ): Promise<PageDto<any>> {
         try {
+            const query = {};
+
+            // Add search functionality
+            if (searchUserDto?.search && searchUserDto.search.trim() !== '') {
+                const searchRegex = new RegExp(searchUserDto.search, 'i');
+                query['$or'] = [
+                    { username: searchRegex },
+                    { email: searchRegex },
+                    { firstName: searchRegex },
+                    { lastName: searchRegex }
+                ];
+            }
+
+            const take = pageOptionsDto.take ?? 10; 
+            const skip = pageOptionsDto.skip ?? 0;
+
             const users = await CommonHelpers.retry(async () => {
-                //     const users = await this.UserModel.find().lean().exec();
-                //     if (!users || users.length === 0) {
-                //         throw new NotFoundException('No users found');
-                //     }
-                //     return users;
-                // 
-                // const foundUsers = users.map(user => CommonHelpers.transformDocument(user));
-                if (!pageOptionsDto) {
-                    throw new Error('Page options are required');
-                }
-
-                const take = pageOptionsDto.take ?? 10; // Default value if undefined
-                const skip = pageOptionsDto.skip ?? 0;  // Default value if undefined
-
-                const users = await this.UserModel.find()
+                return await this.UserModel.find(query)
                 .limit(take)
                 .skip(skip)
                 .lean()
                 .exec();
-                return users;
             });
             const items = users.map(user => CommonHelpers.transformDocument(user));
-            const itemCount = await this.UserModel.countDocuments().exec();
-            if (!pageOptionsDto) {
-                throw new Error('Page options are required');
-            }
+            const itemCount = await this.UserModel.countDocuments(query).exec();
             const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+
             return new PageDto(items, pageMetaDto);
-            // return foundUsers;
         } catch (error) {
             throw new Error(`Error finding all users: ${error.message}`);
         }
@@ -175,6 +175,31 @@ export class DatabaseService {
         }
     }
 
+    async findAllUsersByStatus(status: string, pageOptionsDto?: PageOptionsDto): Promise<PageDto<any>> {
+        try {
+
+            if (!pageOptionsDto) {
+                pageOptionsDto = new PageOptionsDto();
+            }
+            const take = pageOptionsDto.take ?? 10; 
+            const skip = pageOptionsDto.skip ?? 0;
+            const users = await CommonHelpers.retry(async () => {
+                const users = await this.UserModel.find({ status })
+                    .limit(take)
+                    .skip(skip)
+                    .lean()
+                    .exec();
+                return users;
+            });
+            const items = users.map(user => CommonHelpers.transformDocument(user));
+            const itemCount = await this.UserModel.countDocuments({ status }).exec();
+            const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto });
+            return new PageDto(items, pageMetaDto);
+        } catch (error) {
+            throw new Error(`Error finding users by status: ${error.message}`);
+        }
+    }
+
     async deleteUser(id: string, session?: ClientSession) {
         try {
             const result = await CommonHelpers.retry(async () => {
@@ -190,3 +215,4 @@ export class DatabaseService {
         }
     }
 }
+

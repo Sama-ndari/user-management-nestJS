@@ -76,5 +76,15 @@ export class EmailService {
       currentYear: new Date().getFullYear(),
     });
   }
+
+  async sendUpdateCredentials(userEmail: string, username: string, tempPassword: string) {
+    await this.sendEmail(userEmail, 'Vos nouveaux identifiants de connexion', 'updatePassword', {
+      userEmail,
+      tempPassword,
+      username,
+      loginLink: process.env.LOGIN_URL || '',
+      currentYear: new Date().getFullYear(),
+    });
+  }
   
 }

@@ -57,6 +57,49 @@ export class CreateUserDto {
   @ApiProperty({ description: 'The Group of the user', example: 'Admin' })
   group?: 'Admin' | 'Customer' | 'Merchant' | 'Commissionaire';
 }
+
+export class GoogleAuthDto {
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ description: 'Google authentication token', example: 'google_id_token' })
+  idToken: string;
+  
+  @IsEmail()
+  @IsOptional()
+  @ApiProperty({ description: 'Email from Google account', required: false })
+  email?: string;
+  
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: 'First name from Google account', required: false })
+  firstName?: string;
+  
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: 'Last name from Google account', required: false })
+  lastName?: string;
+  
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: 'Profile picture URL from Google account', required: false })
+  picture?: string;
+  
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: 'The Group of the user', example: 'Customer', required: false })
+  group?: 'Admin' | 'Customer' | 'Merchant' | 'Commissionaire';
+  
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: 'Additional phone number', required: false })
+  phone?: string;
+  
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: 'Additional address information', required: false })
+  address?: string;
+}
+
 export class UserRepresentation {
   username: string;
   email: string;
@@ -160,4 +203,36 @@ export class ResetPasswordDto {
   @IsNotEmpty()
   @ApiProperty({ description: 'The password of the user', example: 'Password123$' })
   newPassword: string;
+}
+
+export class FilterUserDto {
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: 'Filter by username', required: false })
+  username?: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: 'Filter by first name', required: false })
+  firstName?: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: 'Filter by last name', required: false })
+  lastName?: string;
+
+  @IsEmail()
+  @IsOptional()
+  @ApiProperty({ description: 'Filter by email', required: false })
+  email?: string;
+}
+
+export class SearchUserDto {
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ 
+    description: 'Search term for filtering users by username, email, firstName, or lastName',
+    required: false 
+  })
+  search?: string;
 }

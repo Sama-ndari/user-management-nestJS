@@ -1,8 +1,8 @@
 //src/users/keycloak/keycloak.service.ts
-import { forwardRef, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, forwardRef, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { HttpService } from "@nestjs/axios";
-import { firstValueFrom, lastValueFrom } from "rxjs";
-import { CreateUserDatabaseDto, RoleRepresentation, UserRepresentation } from 'src/users/dto/create-user.dto';
+import { firstValueFrom } from "rxjs";
+import { GoogleAuthDto, RoleRepresentation, UserRepresentation } from 'src/users/dto/create-user.dto';
 import { LoginDto } from 'src/users/dto/login.dto';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -197,6 +197,166 @@ export class KeycloakService {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+  // Add these new methods for Google authentication
+  
+  async authenticateWithGoogle(googleAuthDto: GoogleAuthDto): Promise<any> {
+    try {
+      // 1. Verify the Google token with Keycloak
+      const verifiedUser = await this.verifyGoogleToken(googleAuthDto.idToken);
+      
+      // 2. Check if user exists in Keycloak by email
+      const token = await this.getAdminToken();
+      const existingUser = await this.findUserByEmail(verifiedUser.email, token);
+      
+      if (existingUser) {
+        // User exists, ensure they're linked to Google identity
+        await this.linkUserToGoogle(existingUser.id, googleAuthDto.idToken, token);
+        return existingUser;
+      } else {
+        // User doesn't exist, create new user with Google info
+        return await this.createGoogleUser(verifiedUser, googleAuthDto, token);
+      }
+    } catch (error) {
+      console.error('Google authentication error:', error);
+      throw new HttpException(
+        `Failed to authenticate with Google: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+  
+  private async verifyGoogleToken(idToken: string): Promise<any> {
+    // Use Keycloak's token verification endpoint
+    const token = await this.getAdminToken();
+    const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/identity-provider/instances/google/validate`;
+    
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(url, { token: idToken }, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+      );
+      return response.data;
+    } catch (error) {
+      throw new BadRequestException('Invalid Google token');
+    }
+  }
+  
+  private async linkUserToGoogle(userId: string, idToken: string, adminToken: string): Promise<void> {
+    const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users/${userId}/federated-identity/google`;
+    
+    try {
+      await firstValueFrom(
+        this.httpService.post(url, { 
+          identityProvider: 'google',
+          userId: idToken, // Google's user ID from the token
+          token: idToken
+        }, {
+          headers: {
+            Authorization: `Bearer ${adminToken}`
+          }
+        })
+      );
+    } catch (error) {
+      console.warn('Could not link user to Google account:', error.message);
+      // Continue anyway as the user exists
+    }
+  }
+  
+  private async createGoogleUser(googleInfo: any, googleAuthDto: GoogleAuthDto, adminToken: string): Promise<any> {
+    // Generate a username based on email if not provided
+    const username = googleInfo.email.split('@')[0] + '_' + Math.floor(Math.random() * 1000);
+    
+    // Prepare user data for Keycloak
+    const userData = {
+      username: username,
+      email: googleInfo.email,
+      firstName: googleInfo.given_name || googleAuthDto.firstName,
+      lastName: googleInfo.family_name || googleAuthDto.lastName,
+      enabled: true,
+      emailVerified: true, // Google emails are verified
+      attributes: {
+        picture: googleInfo.picture || googleAuthDto.picture,
+        phone: googleAuthDto.phone,
+        address: googleAuthDto.address,
+        // group: googleAuthDto.group || 'Customer', // Default group
+        status: 'active' // Auto-activate Google users
+      },
+      federatedIdentities: [{
+        identityProvider: 'google',
+        userId: googleInfo.sub, // Google's user ID
+        userName: googleInfo.email
+      }]
+    };
+    
+    // Create user in Keycloak
+    const url = `${process.env.KEYCLOAK_ADMIN_BASE_URL}/users`;
+    try {
+      await firstValueFrom(
+        this.httpService.post(url, userData, {
+          headers: {
+            Authorization: `Bearer ${adminToken}`
+          }
+        })
+      );
+      
+      // Get the created user
+      const createdUser = await this.findUserByEmail(googleInfo.email, adminToken);
+      
+      // Add user to appropriate group
+      if (googleAuthDto.group) {
+        const groupId = await this.getGroupIdByName(googleAuthDto.group);
+        await this.addUserToGroup(createdUser.id, groupId, adminToken);
+      } 
+      // else {
+      //   // Add to default Customer group
+      //   const customerGroupId = await this.getGroupIdByName('Customer');
+      //   await this.addUserToGroup(createdUser.id, customerGroupId, adminToken);
+      // }
+      
+      return createdUser;
+    } catch (error) {
+      throw new HttpException(
+        `Failed to create user from Google account: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   async login(userdto: LoginDto): Promise<any> {
     return this.userKeycloakService.login(userdto);
   }
@@ -231,6 +391,10 @@ export class KeycloakService {
 
   async resetPassword(id: string, newPassword: string): Promise<any> {
     return this.userKeycloakService.resetPassword(id, newPassword);
+  }
+
+  async generateNewPassword(identifier: string): Promise<any> {
+    return this.userKeycloakService.generateNewPassword(identifier);
   }
 
   async getConnectedUsers(): Promise<any[]> {
@@ -347,6 +511,10 @@ export class KeycloakService {
 
   async getAllUsersFromGroup(groupId: string): Promise<any[]> {
     return this.groupService.getAllUsersFromGroup(groupId);
+  }
+
+  async getAllUsersFromNameGroup(groupName: string): Promise<any[]> {
+    return this.groupService.getAllUsersFromNameGroup(groupName);
   }
 
   async getGroupById(groupId: string): Promise<any> {
