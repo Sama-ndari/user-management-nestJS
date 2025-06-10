@@ -63,38 +63,46 @@ export class UsersController {
     }
   }
 
-  // @ApiTags('Audit & System')
-  // @Delete('logs/audit')
-  // @ApiOperation({ summary: 'Delete audit logs with optional filters' })
-  // @ApiQuery({ name: 'date', required: false, description: "Format: 'YYYY-MM-DD'" })
-  // @ApiQuery({ name: 'actor', required: false, description: "Username of the Actor or 'system'" })
-  // @ApiQuery({ name: 'action', required: false, description: "Name of the Action" })
-  // @ApiQuery({ name: 'startTime', required: false, description: "Format: 'HH:mm'" })
-  // @ApiQuery({ name: 'endTime', required: false, description: "Format: 'HH:mm'" })
-  // @ApiBearerAuth('JWT')
-  // @UseGuards(AuthGuard('jwt'))
-  // async deleteAuditLog(
-  //   @Res() res: Response,
-  //   @Query('date') date?: string,
-  //   @Query('actor') actor?: string,
-  //   @Query('action') action?: string,
-  //   @Query('startTime') startTime?: string,
-  //   @Query('endTime') endTime?: string,
-  // ) {
+  @ApiTags('Audit & System')
+  @Delete('logs/audit')
+  @ApiOperation({ summary: 'Delete audit logs with optional filters' })
+  @ApiQuery({ name: 'date', required: false, description: "Format: 'YYYY-MM-DD'" })
+  @ApiQuery({ name: 'actor', required: false, description: "Username of the Actor or 'system'" })
+  @ApiQuery({ name: 'action', required: false, description: "Name of the Action" })
+  @ApiQuery({ name: 'startTime', required: false, description: "Format: 'HH:mm'" })
+  @ApiQuery({ name: 'endTime', required: false, description: "Format: 'HH:mm'" })
+  @ApiBearerAuth('JWT')
+  @UseGuards(AuthGuard('jwt'))
+  async deleteAuditLog(
+    @Res() res: Response,
+    @Query('date') date?: string,
+    @Query('actor') actor?: string,
+    @Query('action') action?: string,
+    @Query('startTime') startTime?: string,
+    @Query('endTime') endTime?: string,
+  ) {
 
-  //   const result = await this.usersService.deleteAuditLogs({
-  //     date: date || null,
-  //     actor: actor || null,
-  //     action: action || null,
-  //     startTime: startTime || null,
-  //     endTime: endTime || null,
-  //   });
-  //   return res.json({ message: 'Logs deleted successfully', deletedCount: result.deletedCount });
-  // }
+    const result = await this.usersService.deleteAuditLogs({
+      date: date || null,
+      actor: actor || null,
+      action: action || null,
+      startTime: startTime || null,
+      endTime: endTime || null,
+    });
+    return res.json({ message: 'Logs deleted successfully', deletedCount: result.deletedCount });
+  }
+
+
+
+
 
   // ==============================
   // User Endpoints
   // ==============================
+
+
+
+
 
   @ApiTags('User Management')
   @Post()

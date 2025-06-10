@@ -42,6 +42,7 @@
     "keycloak-connect": "^26.1.1",
     "mongoose": "^8.13.2",
     "nest-keycloak-connect": "^1.10.1",
+    "node-vault": "^0.10.5",
     "nodemailer": "^7.0.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

@@ -3,6 +3,7 @@ import * as nodemailer from 'nodemailer';
 import * as handlebars from 'handlebars';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Config } from 'src/main';
 
 @Injectable()
 export class EmailService {
@@ -12,19 +13,19 @@ export class EmailService {
   constructor() {
     Logger.log('EmailService initialized');
     this.transporter = nodemailer.createTransport({
-      service: process.env.SMTP_SERVICE || '',
-      host: process.env.SMTP_HOST || '',
-      port: process.env.SMTP_PORT || 0,
-      secure: process.env.SMTP_SECURE === 'true',
+      service: process.env.SMTP_SERVICE || Config.mail.SMTP_SERVICE,
+      host: process.env.SMTP_HOST || Config.mail.SMTP_HOST,
+      port: process.env.SMTP_PORT || Config.mail.SMTP_PORT,
+      secure: process.env.SMTP_SECURE === 'true' || Config.mail.SMTP_SECURE,
       auth: {
-        user: process.env.SMTP_USER ||'',
-        pass: process.env.SMTP_PASS || '',
+        user: process.env.SMTP_USER || Config.mail.SMTP_USER,
+        pass: process.env.SMTP_PASS || Config.mail.SMTP_PASS,
       },
       tls: { rejectUnauthorized: false },
     }, {
       from: {
-        name: process.env.EMAIL_FROM_NAME || '',
-        address: process.env.EMAIL_FROM_ADDRESS || '',
+        name: process.env.EMAIL_FROM_NAME || Config.mail.EMAIL_FROM_NAME,
+        address: process.env.EMAIL_FROM_ADDRESS || Config.mail.EMAIL_FROM_ADDRESS,
       },
     });
 
@@ -72,7 +73,7 @@ export class EmailService {
       userEmail,
       tempPassword,
       username,
-      loginLink: process.env.LOGIN_URL || '',
+      loginLink: process.env.LOGIN_URL || Config.mail.LOGIN_URL,
       currentYear: new Date().getFullYear(),
     });
   }
@@ -82,7 +83,7 @@ export class EmailService {
       userEmail,
       tempPassword,
       username,
-      loginLink: process.env.LOGIN_URL || '',
+      loginLink: process.env.LOGIN_URL || Config.mail.LOGIN_URL,
       currentYear: new Date().getFullYear(),
     });
   }
